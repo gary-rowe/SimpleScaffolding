@@ -1,0 +1,5 @@
+{
+  "base_package": "uk.co.froot.example",
+  "read": false,
+  "entities": ["Role","Customer"]
+}
