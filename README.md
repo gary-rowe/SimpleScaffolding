@@ -1,20 +1,22 @@
-# Simple Scaffolding
+## Simple Scaffolding
 
 Utility class to generate code from templates using configuration specified in `scaffolding.json`.
 Use this to rapidly create all the supporting code specific to your project for a particular purpose.
 
 Examples of use are:
 
-* Entities and their supporting structures (DAOs, repositories, services, resources, unit tests, models and so on
-* Rapid generation of common design patterns
+* Entities and their supporting structures (DAOs, repositories, services, resources, unit tests, models and so on)
+* Rapid generation of common design patterns spanning multiple classes
 
-## You've heard of Maven archetypes?
+### Isn't this already done with Maven archetypes?
 
-Yes, and I find them cumbersome at best. This simple scaffolding system lets me snapshot an existing set of code in
-seconds and then quickly filter out stuff that I don't want and tidy up stuff that I do. Once I've got my new templates
-I can reel off partial copies tailored to individual needs much faster than I could with Maven archetypes.
+Yes, but I find them cumbersome at best.
 
-## Your templates won't work for me
+This simple scaffolding system lets me snapshot an existing set of code in seconds and then quickly filter out stuff that
+I don't want and tidy up stuff that I do. Once I've got my new templates I can spin off partial copies tailored to
+individual needs much faster than I ever could with Maven archetypes.
+
+### Your templates won't work for me
 
 There is no mandated scaffold template - you can use anything you like. It just has to have placeholders defined using
 the Handlebars notation with no spaces (e.g. `{{package}}`) listed below:
@@ -23,12 +25,12 @@ the Handlebars notation with no spaces (e.g. `{{package}}`) listed below:
 * `entity-class`: Entity class, e.g. `AdminUser`
 * `entity-variable`: Entity variable, e.g. `adminUser`
 
-## How to install
+### How to install
 
 There is no installation. You just just copy the `Scaffolding` source code into your project under `src/test/java`.
 You might want to copy in `scaffolding.json` as well.
 
-## Quickly generate templates from existing code
+### Quickly generate templates from existing code
 
 Scaffolding is specific to your application so you can read existing examples and turn them into templates. After
 a little bit of editing they will be suitable for use in your application (and others based on it).
@@ -37,7 +39,7 @@ To get `Scaffolding` to read your existing code you need to provide a `scaffoldi
 
 ```json
 {
-  "base_package":"org.example.api",
+  "base_package":"uk.co.froot.example",
   "read": true,
   "entities": ["User"]
 }
@@ -53,19 +55,19 @@ Any class that does not include the name of one of the entities will be just a s
 You then delete any that are not useful and edit those that remain to meet your requirements. The idea is to edit them
 to be as general purpose as possible (no entity-specific fields beyond the common ID for example).
 
-## Try it now
+### Try it now...
 
 This project contains an example of a User DTO. Run `Scaffolding.main()` with `scaffolding.js` set as above. In the blink
 of an eye you'll have a template under `src/test/resources/scaffolding`.
 
-## Generate code from templates
+### Generate code from templates
 
 Once you have your templates in place, you can use them to generate new code. This is again driven by the `scaffolding.json`
 files. You switch away from `read` and provide a list of new entities that you would like created:
 
 ```json
 {
-  "base_package":"org.example.api",
+  "base_package":"uk.co.froot.example",
   "read": false,
   "entities": ["Role","Customer"]
 }
@@ -75,7 +77,7 @@ Using the above, the generic templates built from the `User` will be used to pro
 `Customer`. For example `MongoRoleReadService` and `MongoCustomerReadService`. If you have been careful with what was
 included in the original `User` then the produced code will act as good launch point for the new entities.
 
-## Try it now
+### And once again...
 
 Run `Scaffolding.main()` with `scaffolding.js` set as above. Then take a look under `src/main/java/uk/co/froot/example/dto`.
 You'll notice that the original `user.User` has been substituted for `role.Role` and `customer.Customer`. Even the internal
