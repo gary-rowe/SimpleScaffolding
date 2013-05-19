@@ -1,6 +1,6 @@
 ## Simple Scaffolding
 
-[Utility class](https://github.com/gary-rowe/SimpleScaffolding/blob/master/src/test/java/Scaffolding.java) to generate code from templates using configuration specified in `scaffolding.json`.
+[Utility class](https://raw.github.com/gary-rowe/SimpleScaffolding/master/src/test/java/Scaffolding.java) to generate code from templates using configuration specified in `scaffolding.json`.
 Use this to rapidly create all the supporting code specific to your project for a particular purpose.
 
 Examples of use are:
