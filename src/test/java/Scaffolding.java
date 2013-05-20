@@ -67,10 +67,7 @@ public class Scaffolding {
   // Base path locations
   private static final String SCAFFOLDING = "scaffolding/";
   private static final String BASE_TEMPLATE_PATH = "src/test/resources/" + SCAFFOLDING;
-  private static final String BASE_MAIN_JAVA_PATH = "src/main/java/";
-  private static final String BASE_TEST_JAVA_PATH = "src/test/java/";
-  private static final String BASE_MAIN_RESOURCES_PATH = "src/main/resources/";
-  private static final String BASE_TEST_RESOURCES_PATH = "src/test/resources/";
+  private static final String BASE_SRC_PATH = "src";
 
   // Directives
   private static final String BASE_PACKAGE_DIRECTIVE = "{{package}}";
@@ -115,7 +112,7 @@ public class Scaffolding {
 
       // Build URIs for all files within the project
       Set<URI> projectUris = Sets.newHashSet();
-      recurseFiles("src", projectUris);
+      recurseFiles(BASE_SRC_PATH, projectUris);
       sc.setProjectUris(projectUris);
 
       readTemplates(sc);
