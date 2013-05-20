@@ -12,8 +12,8 @@ import com.fasterxml.jackson.annotation.JsonRootName;
  * @since 0.0.1
  *         
  */
-@JsonRootName("user")
-public class User {
+@JsonRootName("admin_user")
+public class AdminUser {
 
   @JsonProperty
   private Long id;
@@ -31,7 +31,7 @@ public class User {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
 
-    User user = (User) o;
+    AdminUser user = (AdminUser) o;
 
     if (id != null ? !id.equals(user.id) : user.id != null) return false;
 

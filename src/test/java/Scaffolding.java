@@ -74,6 +74,7 @@ public class Scaffolding {
   private static final String BASE_PACKAGE_PATH_DIRECTIVE = "{{package-path}}";
   private static final String ENTITY_CLASS_DIRECTIVE = "{{entity-class}}";
   private static final String ENTITY_VARIABLE_DIRECTIVE = "{{entity-variable}}";
+  private static final String ENTITY_SNAKE_DIRECTIVE = "{{entity-snake}}";
 
   /**
    * Main entry point to the scaffolding operations
@@ -163,15 +164,19 @@ public class Scaffolding {
 
         // Build the patterns to recognise the entities
         String entityVariable = entity.substring(0, 1).toLowerCase() + entity.substring(1);
+        String entitySnake = toSnakeCase(entityVariable);
 
         // Check for entity content
         content = content
           .replace(entity, ENTITY_CLASS_DIRECTIVE)
-          .replace(entityVariable, ENTITY_VARIABLE_DIRECTIVE);
+          .replace(entityVariable, ENTITY_VARIABLE_DIRECTIVE)
+          // Detect admin_user and "admin_user"
+          .replace(entitySnake, ENTITY_SNAKE_DIRECTIVE);
 
         templateTarget = templateTarget
           .replace(entity, ENTITY_CLASS_DIRECTIVE)
-          .replace(entityVariable, ENTITY_VARIABLE_DIRECTIVE);
+          .replace(entityVariable, ENTITY_VARIABLE_DIRECTIVE)
+          .replace(entitySnake, ENTITY_SNAKE_DIRECTIVE);
 
         // Write the content
         writeResult(content, templateTarget);
@@ -197,12 +202,14 @@ public class Scaffolding {
     for (String entity : entities) {
 
       String entityVariable = entity.substring(0, 1).toLowerCase() + entity.substring(1);
+      String entitySnake = toSnakeCase(entityVariable);
 
       Map<String, String> directiveMap = Maps.newHashMap();
       directiveMap.put(BASE_PACKAGE_DIRECTIVE, basePackage);
       directiveMap.put(BASE_PACKAGE_PATH_DIRECTIVE, sc.getBasePath());
       directiveMap.put(ENTITY_CLASS_DIRECTIVE, entity);
       directiveMap.put(ENTITY_VARIABLE_DIRECTIVE, entityVariable);
+      directiveMap.put(ENTITY_SNAKE_DIRECTIVE, entitySnake);
 
       for (Map.Entry<String, String> templateEntry : templateMap.entrySet()) {
 
@@ -257,6 +264,30 @@ public class Scaffolding {
     }
 
     return templateMap;
+  }
+
+  /**
+   * <p>Converts camel case to snake snake case as follows:</p>
+   * <ul>
+   *   <li><code>This</code>: <code>this</code></li>
+   *   <li><code>ThisIs</code>: <code>this_is</code></li>
+   *   <li><code>thisIsATest</code>: <code>this_is_a_test</code></li>
+   *   <li><code>this1Is12A123Test1234</code>: <code>this_1_is_12_a_123_test_1234</code></li>
+   * </ul>
+   * <p>Adapted from <a href="http://stackoverflow.com/a/2560017/396747">Stack Overflow answer</a></p>
+   *
+   * @param camelCase The camel case (with arbitrary initial capitalisation)
+   * @return A snake case version in lowercase
+   */
+  private String toSnakeCase(String camelCase) {
+    return camelCase.replaceAll(
+      String.format("%s|%s|%s",
+        "(?<=[A-Z])(?=[A-Z][a-z])",
+        "(?<=[^A-Z])(?=[A-Z])",
+        "(?<=[A-Za-z])(?=[^A-Za-z])"
+      ),
+      "_"
+    ).toLowerCase();
   }
 
   /**

@@ -14,7 +14,7 @@ import java.net.URL;
 
 import static org.fest.assertions.api.Assertions.assertThat;
 
-public class UserTest {
+public class AdminUserTest {
 
   @Rule
   public ExpectedException thrown = ExpectedException.none();
@@ -23,7 +23,7 @@ public class UserTest {
     public void verifySerialization() throws IOException {
 
       // Arrange
-      URL fixtureUrl = Resources.getResource("fixtures/user/test-user-1.json");
+      URL fixtureUrl = Resources.getResource("fixtures/user/test-admin_user-1.json");
       String expected = Resources.toString(fixtureUrl, Charsets.UTF_8);
 
       // Ensure we have a root name
@@ -33,7 +33,7 @@ public class UserTest {
       objectMapper.configure(SerializationFeature.INDENT_OUTPUT, true);
 
       // Act
-      User testObject = objectMapper.readValue(expected,User.class);
+      AdminUser testObject = objectMapper.readValue(expected,AdminUser.class);
       String result = objectMapper.writeValueAsString(testObject);
 
       // Assert

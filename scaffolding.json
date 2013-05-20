@@ -1,5 +1,5 @@
 {
   "base_package": "uk.co.froot.example",
   "read": true,
-  "entities": ["User"]
+  "entities": ["AdminUser"]
 }
