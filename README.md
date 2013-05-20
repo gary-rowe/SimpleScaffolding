@@ -24,11 +24,12 @@ the Handlebars notation with no spaces (e.g. `{{package}}`) listed below:
 * `package`: Base package, e.g. `org.example`
 * `entity-class`: Entity class, e.g. `AdminUser`
 * `entity-variable`: Entity variable, e.g. `adminUser`
+* `entity-snake`: Entity in snake case, e.g. `admin_user`
 
 ### How to install
 
-There is no installation. You just just copy the `Scaffolding` source code into your project under `src/test/java`.
-You might want to copy in `scaffolding.json` as well.
+There is no installation. You just just copy the `Scaffolding` source code into your project under `src/test/java` and
+run it from your IDE. You'll want to copy in `scaffolding.json` as well then edit to your needs.
 
 ### Quickly generate templates from existing code
 
@@ -41,19 +42,25 @@ To get `Scaffolding` to read your existing code you need to provide a `scaffoldi
 {
   "base_package":"uk.co.froot.example",
   "read": true,
-  "entities": ["User"]
+  "entities": ["AdminUser"]
 }
 ```
 
-All code from `base_package` and below will be recursively examined and templates built. These will be stored in a directory
-structure under `src/test/resources/scaffolding`. If a class including the name of one of the entities (`User`) is discovered
-like `MongoUserReadService.java` for example, then it will be treated as an entity template.
+All code from `base_package` and below will be recursively examined and templates built. These will be stored under
+`src/test/resources/scaffolding`. If a class including the name of one of the entities (`AdminUser`) is discovered
+like `MongoAdminUserReadService.java` for example, then it will be treated as an entity template.
 
 Any class that does not include the name of one of the entities will be just a standard file that gets included everywhere
 (like `DateUtils` if you can't have a common support JAR for some reason).
 
 You then delete any that are not useful and edit those that remain to meet your requirements. The idea is to edit them
 to be as general purpose as possible (no entity-specific fields beyond the common ID for example).
+
+#### TIP: Use entities with "multi-word" names to get snake case
+
+The template reader can infer snake case locations so providing a "multi-word" entity name, like `AdminUser`
+instead of `User` will enable the correct placement of the directive in the template (e.g. `admin_user`). This is handy
+for JSON test fixtures and package names.
 
 ### Try it now...
 
@@ -80,8 +87,15 @@ included in the original `User` then the produced code will act as good launch p
 ### And once again...
 
 Run `Scaffolding.main()` with `scaffolding.js` set as above. Then take a look under `src/main/java/uk/co/froot/example/dto`.
-You'll notice that the original `user.User` has been substituted for `role.Role` and `customer.Customer`. Even the internal
-documentation has been filled in.
+You'll notice that the original `admin_user.AdminUser` has been substituted for `role.Role` and `customer.Customer`. Even the internal
+documentation has been filled in. If
 
+#### TIP: Use your IDE's version control view to strip out unwanted templates
+
+Some IDEs, such as Intellij, provide a Changes view which clearly highlights any new code that is not yet under version
+control. You can use this view to quickly strip out any unwanted code before committing the templates without having to
+dig around in sub-directories.
+
+### The long view
 Over time you'll build up a useful library of templates that fit with different types of projects which should add up to
 a [considerable time saving](http://www.xkcd.com/1205/).

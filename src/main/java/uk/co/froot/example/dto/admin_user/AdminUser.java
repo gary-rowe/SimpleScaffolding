@@ -1,4 +1,4 @@
-package uk.co.froot.example.dto.user;
+package uk.co.froot.example.dto.admin_user;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonRootName;

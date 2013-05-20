@@ -1,4 +1,4 @@
-package uk.co.froot.example.dto.user;
+package uk.co.froot.example.dto.admin_user;
 
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -23,7 +23,7 @@ public class AdminUserTest {
     public void verifySerialization() throws IOException {
 
       // Arrange
-      URL fixtureUrl = Resources.getResource("fixtures/user/test-admin_user-1.json");
+      URL fixtureUrl = Resources.getResource("fixtures/json/test-admin_user-1.json");
       String expected = Resources.toString(fixtureUrl, Charsets.UTF_8);
 
       // Ensure we have a root name
