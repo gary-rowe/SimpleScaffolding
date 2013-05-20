@@ -1,15 +1,15 @@
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.base.Charsets;
 import com.google.common.base.Preconditions;
-import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import com.google.common.io.Files;
 import com.google.common.io.Resources;
-import com.google.common.reflect.ClassPath;
 
 import java.io.*;
+import java.net.URI;
 import java.nio.charset.Charset;
 import java.util.Map;
 import java.util.Set;
@@ -65,10 +65,12 @@ import java.util.Set;
 public class Scaffolding {
 
   // Base path locations
-  private static final String SCAFFOLDING = "scaffolding";
+  private static final String SCAFFOLDING = "scaffolding/";
   private static final String BASE_TEMPLATE_PATH = "src/test/resources/" + SCAFFOLDING;
-  private static final String BASE_MAIN_PATH = "src/main/java";
-  private static final String BASE_TEST_PATH = "src/test/java";
+  private static final String BASE_MAIN_JAVA_PATH = "src/main/java/";
+  private static final String BASE_TEST_JAVA_PATH = "src/test/java/";
+  private static final String BASE_MAIN_RESOURCES_PATH = "src/main/resources/";
+  private static final String BASE_TEST_RESOURCES_PATH = "src/test/resources/";
 
   // Directives
   private static final String BASE_PACKAGE_DIRECTIVE = "{{package}}";
@@ -76,20 +78,16 @@ public class Scaffolding {
   private static final String ENTITY_CLASS_DIRECTIVE = "{{entity-class}}";
   private static final String ENTITY_VARIABLE_DIRECTIVE = "{{entity-variable}}";
 
-
   /**
    * Main entry point to the scaffolding operations
    *
    * @param args [0]: path to <code>scaffolding.json</code>
-   *
    * @throws IOException If something goes wrong
    */
   public static void main(String[] args) throws IOException {
 
     if (args == null || args.length != 1) {
-
-      args = new String[] { "scaffolding.json" };
-
+      args = new String[]{"scaffolding.json"};
     }
 
     InputStream is = new FileInputStream(args[0]);
@@ -105,7 +103,6 @@ public class Scaffolding {
    * Executes the process
    *
    * @param sc The configuration
-   *
    * @throws IOException If something goes wrong
    */
   private void run(ScaffoldingConfiguration sc) throws IOException {
@@ -115,11 +112,23 @@ public class Scaffolding {
     if (sc.isRead()) {
 
       System.out.println("Reading existing project and extracting templates");
+
+      // Build URIs for all files within the project
+      Set<URI> projectUris = Sets.newHashSet();
+      recurseFiles("src", projectUris);
+      sc.setProjectUris(projectUris);
+
       readTemplates(sc);
 
     } else {
 
       System.out.println("Writing new code from templates");
+
+      // Build URIs for all files within the project
+      Set<URI> projectUris = Sets.newHashSet();
+      recurseFiles(BASE_TEMPLATE_PATH, projectUris);
+      sc.setProjectUris(projectUris);
+
       writeTemplates(sc);
     }
 
@@ -129,7 +138,6 @@ public class Scaffolding {
    * Scans the existing project and builds templates from the code
    *
    * @param sc The configuration
-   *
    * @throws IOException If something goes wrong
    */
   private void readTemplates(ScaffoldingConfiguration sc) throws IOException {
@@ -138,98 +146,55 @@ public class Scaffolding {
     String basePackage = sc.getBasePackage();
 
     // Form a set of all classes in the classpath starting at the base package
-    ImmutableSet<ClassPath.ClassInfo> classInfoSet = ClassPath
-      .from(Scaffolding.class.getClassLoader())
-      .getTopLevelClassesRecursive(sc.getBasePackage());
+    String workDir = (new File("")).toURI().toString();
 
-    for (ClassPath.ClassInfo classInfo : classInfoSet) {
+    for (URI uri : sc.getProjectUris()) {
 
-      String fullyQualifiedName = classInfo.getName();
-
-      // Infer the likely locations of the source
-      String fullyQualifiedMainPath = BASE_MAIN_PATH + "/" + fullyQualifiedName.replace(".", "/") + ".java";
-      String fullyQualifiedTestPath = BASE_TEST_PATH + "/" + fullyQualifiedName.replace(".", "/") + ".java";
-
-      // Check where this file can be found (or not)
-      boolean isTest = false;
-      File sourceFile = new File(fullyQualifiedMainPath);
-      if (!sourceFile.exists()) {
-        sourceFile = new File(fullyQualifiedTestPath);
-        if (!sourceFile.exists()) {
-          System.err.println("Error: Could not locate '" + fullyQualifiedName + "' under 'src/main/java' or 'src/test/java'.");
-          continue;
-        }
-        isTest = true;
-      }
+      String projectPath = uri.toString().replace(workDir, "");
 
       // Read the source file
-      String sourceCode = Files.toString(sourceFile, Charset.defaultCharset());
+      String sourceCode = Resources.toString(uri.toURL(), Charset.defaultCharset());
 
-      String entityName = classInfo.getSimpleName();
+      // Multiple entities may lead to overlapping templates
+      // but some project structures can cater for this
+      for (String entity : entities) {
+        // Work out the template target
+        String templateTarget = BASE_TEMPLATE_PATH + projectPath + ".hbs";
 
-      // Check if simple name is an entity
-      boolean useEntity = false;
-      if (!entities.contains(entityName)) {
+        // Introduce the base package directive
+        String content = sourceCode.replace(basePackage, BASE_PACKAGE_DIRECTIVE);
 
-        // This may be an entity supporting class
-        for (String entity : entities) {
-          if (entityName.contains(entity)) {
-            // Use the entity name
-            entityName = entity;
-            useEntity = true;
-          }
-        }
+        // Build the patterns to recognise the entities
+        String entityVariable = entity.substring(0, 1).toLowerCase() + entity.substring(1);
 
-      } else {
-        useEntity = true;
-      }
-
-      String entityVariable = entityName.substring(0, 1).toLowerCase() + entityName.substring(1);
-
-      // Convert "org.example.ExampleDao" into "main-example-dao.hbs" and "test-example-dao.hbs"
-      String templateMainName = BASE_TEMPLATE_PATH + "/main-" + fullyQualifiedName.replace(basePackage, "").substring(1).replace(".", "-") + ".hbs";
-      String templateTestName = BASE_TEMPLATE_PATH + "/test-" + fullyQualifiedName.replace(basePackage, "").substring(1).replace(".", "-") + ".hbs";
-
-      // Introduce some directives
-      String content = sourceCode.replace(basePackage, BASE_PACKAGE_DIRECTIVE);
-
-      // Check for entity content (e.g. "Base64" is utility, but "MongoUserDao" is entity support for User)
-      if (useEntity) {
+        // Check for entity content
         content = content
-          .replace(entityName, ENTITY_CLASS_DIRECTIVE)
+          .replace(entity, ENTITY_CLASS_DIRECTIVE)
           .replace(entityVariable, ENTITY_VARIABLE_DIRECTIVE);
 
-        templateMainName = templateMainName
-          .replace(entityName, ENTITY_CLASS_DIRECTIVE)
-          .replace(entityVariable, ENTITY_VARIABLE_DIRECTIVE);
-        templateTestName = templateTestName
-          .replace(entityName, ENTITY_CLASS_DIRECTIVE)
+        templateTarget = templateTarget
+          .replace(entity, ENTITY_CLASS_DIRECTIVE)
           .replace(entityVariable, ENTITY_VARIABLE_DIRECTIVE);
 
-      }
-
-      // Ready to write the content
-      if (isTest) {
-        writeResult(content, templateTestName);
-      } else {
-        writeResult(content, templateMainName);
+        // Write the content
+        writeResult(content, templateTarget);
       }
     }
-
   }
 
   /**
    * Handles the process of writing out the templates
    *
    * @param sc The configuration
-   *
    * @throws IOException If something goes wrong
    */
   private void writeTemplates(ScaffoldingConfiguration sc) throws IOException {
 
     Set<String> entities = sc.getEntities();
     String basePackage = sc.getBasePackage();
-    Map<String, String> templateMap = buildTemplateMap();
+
+    // Read all the templates
+    Map<String, String> templateMap = buildTemplateMap(sc);
 
     // Work through the entities applying the templates
     for (String entity : entities) {
@@ -248,14 +213,7 @@ public class Scaffolding {
 
         // Transform the target
         String target = templateEntry.getKey();
-        boolean isTest = target.startsWith("test-");
-        if (isTest) {
-          // Prefix src/test/java/org/example/target
-          target = BASE_TEST_PATH + "/" + BASE_PACKAGE_PATH_DIRECTIVE + "/" + target.substring(5);
-        } else {
-          target = BASE_MAIN_PATH + "/" + BASE_PACKAGE_PATH_DIRECTIVE + "/" + target.substring(5);
-        }
-        target = target.replace(".hbs", ".java");
+        target = target.substring(0, target.length() - 4);
 
         // Transform target and content using directives
         for (Map.Entry<String, String> directiveEntry : directiveMap.entrySet()) {
@@ -264,9 +222,6 @@ public class Scaffolding {
           content = content.replace(directiveEntry.getKey(), directiveEntry.getValue());
 
         }
-
-        // Perform final transformations on the target
-        target = target.replace("-", "/");
 
         // Write out the result
         writeResult(content, target);
@@ -278,28 +233,25 @@ public class Scaffolding {
 
   /**
    * @return A Map keyed on the target name and containing the template with directives
-   *
    * @throws IOException If something goes wrong
    */
-  private Map<String, String> buildTemplateMap() throws IOException {
+  private Map<String, String> buildTemplateMap(ScaffoldingConfiguration sc) throws IOException {
 
     // Provide a map for target and template
     Map<String, String> templateMap = Maps.newHashMap();
 
-    // Form a set of all resources in the classpath (includes all JARs)
-    ImmutableSet<ClassPath.ResourceInfo> resourceInfoSet = ClassPath
-      .from(Scaffolding.class.getClassLoader())
-      .getResources();
+    // Form a set of all classes in the classpath starting at the base package
+    String workDir = (new File("")).toURI().getPath();
 
-    for (ClassPath.ResourceInfo resourceInfo : resourceInfoSet) {
+    for (URI uri : sc.getProjectUris()) {
+
+      String projectPath = uri.getPath().replace(workDir, "");
 
       // Filter out any non-scaffolding resources
-      String name = resourceInfo.getResourceName();
-      if (name.contains(SCAFFOLDING) && name.endsWith(".hbs")) {
+      if (projectPath.contains(SCAFFOLDING) && projectPath.endsWith(".hbs")) {
 
-        String template = Resources.toString(resourceInfo.url(), Charset.defaultCharset());
-
-        String target = name.substring(name.lastIndexOf("/") + 1);
+        String target = projectPath.replace(BASE_TEMPLATE_PATH, "");
+        String template = Resources.toString(uri.toURL(), Charsets.UTF_8);
 
         templateMap.put(target, template);
 
@@ -311,19 +263,42 @@ public class Scaffolding {
   }
 
   /**
+   * @param directory   The starting directory
+   * @param projectUris The set of URIs for all the files
+   * @return The set of all URIs
+   * @throws IOException If something goes wrong
+   */
+  private Set<URI> recurseFiles(String directory, Set<URI> projectUris) throws IOException {
+
+    File[] files = new File(directory).listFiles();
+    if (files != null) {
+      for (File file : files) {
+        if (file.isDirectory()) {
+          recurseFiles(file.getAbsolutePath(), projectUris);
+          continue;
+        }
+        if (file.getName().matches("^(.*?)")) {
+          projectUris.add(file.toURI());
+        }
+      }
+    }
+
+    return projectUris;
+  }
+
+  /**
    * @param content  The content
    * @param fileName The file name
-   *
    * @throws IOException If something goes wrong
    */
   private void writeResult(String content, String fileName) throws IOException {
-    // Write the generated code out
-    System.out.println("Writing: '" + fileName + "'");
+
     File file = new File(fileName);
     if (file.exists()) {
       System.err.println("Skipping '" + fileName + "' to prevent an overwrite.");
       return;
     }
+    System.out.println("Writing: '" + fileName + "'");
     Files.createParentDirs(file);
 
     // Have a good target
@@ -346,6 +321,9 @@ public class Scaffolding {
     @JsonProperty
     private Set<String> entities = Sets.newHashSet();
 
+    @JsonIgnore
+    private Set<URI> projectUris = Sets.newHashSet();
+
     public ScaffoldingConfiguration() {
     }
 
@@ -364,6 +342,14 @@ public class Scaffolding {
     @JsonIgnore
     public String getBasePath() {
       return basePackage.replace(".", "/");
+    }
+
+    public void setProjectUris(Set<URI> projectUris) {
+      this.projectUris = projectUris;
+    }
+
+    public Set<URI> getProjectUris() {
+      return projectUris;
     }
   }
 

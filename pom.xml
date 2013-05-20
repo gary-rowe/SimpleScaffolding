@@ -5,7 +5,7 @@
 
   <groupId>uk.co.froot.scaffolding</groupId>
   <artifactId>scaffolding</artifactId>
-  <version>1.0.0</version>
+  <version>1.1.0</version>
 
   <name>Simple Scaffolding</name>
   <description>Provides simple scaffolding based on templates and entities</description>
@@ -13,14 +13,13 @@
 
   <dependencies>
 
-    <!-- TEST DEPENDENCIES -->
+    <!-- These are just to demonstrate the examples -->
 
     <!-- Guava for Java enhancements -->
     <dependency>
       <groupId>com.google.guava</groupId>
       <artifactId>guava</artifactId>
       <version>14.0</version>
-      <scope>test</scope>
     </dependency>
 
     <!-- Jackson for JSON support -->
@@ -28,12 +27,28 @@
       <groupId>com.fasterxml.jackson.core</groupId>
       <artifactId>jackson-annotations</artifactId>
       <version>2.2.0</version>
-      <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>com.fasterxml.jackson.core</groupId>
       <artifactId>jackson-databind</artifactId>
       <version>2.2.0</version>
+    </dependency>
+
+    <!-- TEST DEPENDENCIES -->
+
+    <!-- JUnit for testing -->
+    <dependency>
+      <groupId>junit</groupId>
+      <artifactId>junit</artifactId>
+      <version>4.11</version>
+      <scope>test</scope>
+    </dependency>
+
+    <!-- FEST for asserting -->
+    <dependency>
+      <groupId>org.easytesting</groupId>
+      <artifactId>fest-assert-core</artifactId>
+      <version>2.0M10</version>
       <scope>test</scope>
     </dependency>
 

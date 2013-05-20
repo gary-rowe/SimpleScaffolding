@@ -1,5 +1,8 @@
 package uk.co.froot.example.dto.user;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonRootName;
+
 /**
  * <p>DTO provide the following to resources:</p>
  * <ul>
@@ -9,8 +12,10 @@ package uk.co.froot.example.dto.user;
  * @since 0.0.1
  *         
  */
+@JsonRootName("user")
 public class User {
 
+  @JsonProperty
   private Long id;
 
   public Long getId() {
