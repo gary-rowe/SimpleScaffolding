@@ -59,7 +59,7 @@ to be as general purpose as possible (no entity-specific fields beyond the commo
 #### TIP: Use entities with "multi-word" names to get snake case
 
 The template reader can infer snake case locations so providing a "multi-word" entity name, like `AdminUser`
-instead of `User` will enable the correct placement of the directive in the template (e.g. `admin_user`). This is handy
+instead of `AdminUser` will enable the correct placement of the directive in the template (e.g. `admin_user`). This is handy
 for JSON test fixtures and package names.
 
 ### Try it now...
@@ -80,15 +80,15 @@ files. You switch away from `read` and provide a list of new entities that you w
 }
 ```
 
-Using the above, the generic templates built from the `User` will be used to produce the equivalent for `Role` and
+Using the above, the generic templates built from the `AdminUser` will be used to produce the equivalent for `Role` and
 `Customer`. For example `MongoRoleReadService` and `MongoCustomerReadService`. If you have been careful with what was
-included in the original `User` then the produced code will act as good launch point for the new entities.
+included in the original `AdminUser` then the produced code will act as good launch point for the new entities.
 
 ### And once again...
 
 Run `Scaffolding.main()` with `scaffolding.js` set as above. Then take a look under `src/main/java/uk/co/froot/example/dto`.
 You'll notice that the original `admin_user.AdminUser` has been substituted for `role.Role` and `customer.Customer`. Even the internal
-documentation has been filled in. If
+documentation has been filled in.
 
 #### TIP: Use your IDE's version control view to strip out unwanted templates
 
@@ -98,4 +98,6 @@ dig around in sub-directories.
 
 ### The long view
 Over time you'll build up a useful library of templates that fit with different types of projects which should add up to
-a [considerable time saving](http://www.xkcd.com/1205/).
+a [considerable time saving](http://www.xkcd.com/1205/). Later, when you come back to legacy projects based on different
+technologies than you've become used to, the templates for that project will still be there and will allow you to make
+the necessary additions much quicker.
