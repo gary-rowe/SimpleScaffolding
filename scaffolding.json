@@ -1,5 +1,6 @@
 {
-  "base_package": "uk.co.froot.example",
-  "read": false,
-  "entities": ["Role","Customer","WibblingAardvark"]
+  "base_package": "uk.gov.meto.standalone.tada",
+  "read": true,
+  "only_with_entity_directives": true,
+  "entities": ["ReportConfiguration"]
 }

@@ -13,6 +13,7 @@ import java.net.URI;
 import java.nio.charset.Charset;
 import java.util.Map;
 import java.util.Set;
+import java.util.regex.Pattern;
 
 /**
  * <p>Utility class to generate code from templates using configuration specified in <code>scaffolding.json</code></p>
@@ -75,6 +76,8 @@ public class Scaffolding {
   private static final String ENTITY_CLASS_DIRECTIVE = "{{entity-class}}";
   private static final String ENTITY_VARIABLE_DIRECTIVE = "{{entity-variable}}";
   private static final String ENTITY_SNAKE_DIRECTIVE = "{{entity-snake}}";
+  private static final String DIRECTIVE_REGEX = "\\{\\{entity.\\S+\\}\\}";
+  private static final Pattern ENTITY_DIRECTIVE_PATTERN =Pattern.compile(DIRECTIVE_REGEX);
 
   /**
    * Main entry point to the scaffolding operations
@@ -156,6 +159,7 @@ public class Scaffolding {
       // Multiple entities may lead to overlapping templates
       // but some project structures can cater for this
       for (String entity : entities) {
+
         // Work out the template target
         String templateTarget = BASE_TEMPLATE_PATH + projectPath + ".hbs";
 
@@ -170,13 +174,20 @@ public class Scaffolding {
         content = content
           .replace(entity, ENTITY_CLASS_DIRECTIVE)
           .replace(entityVariable, ENTITY_VARIABLE_DIRECTIVE)
-          // Detect admin_user and "admin_user"
+            // Detect admin_user and "admin_user"
           .replace(entitySnake, ENTITY_SNAKE_DIRECTIVE);
 
         templateTarget = templateTarget
           .replace(entity, ENTITY_CLASS_DIRECTIVE)
           .replace(entityVariable, ENTITY_VARIABLE_DIRECTIVE)
           .replace(entitySnake, ENTITY_SNAKE_DIRECTIVE);
+
+        // Check if path or content must contain directives
+        if (sc.isOnlyWithEntityDirectives() && !containsEntityDirectives(projectPath, content)) {
+          // Ignore
+          System.err.println("Ignoring '"+projectPath+"' due to directive restriction.");
+          continue;
+        }
 
         // Write the content
         writeResult(content, templateTarget);
@@ -218,6 +229,13 @@ public class Scaffolding {
         // Transform the target
         String target = templateEntry.getKey();
         target = target.substring(0, target.length() - 4);
+
+        // Check if path or content must contain directives
+        if (sc.isOnlyWithEntityDirectives() && !containsEntityDirectives(target, content)) {
+          // Ignore
+          System.err.println("Ignoring '"+target+"' due to directive restriction.");
+          continue;
+        }
 
         // Transform target and content using directives
         for (Map.Entry<String, String> directiveEntry : directiveMap.entrySet()) {
@@ -267,12 +285,21 @@ public class Scaffolding {
   }
 
   /**
+   * @param path    The path
+   * @param content The content
+   * @return True if either the path or content contain entity directives
+   */
+  private boolean containsEntityDirectives(String path, String content) {
+    return ENTITY_DIRECTIVE_PATTERN.matcher(path).find() || ENTITY_DIRECTIVE_PATTERN.matcher(content).find();
+  }
+
+  /**
    * <p>Converts camel case to snake snake case as follows:</p>
    * <ul>
-   *   <li><code>This</code>: <code>this</code></li>
-   *   <li><code>ThisIs</code>: <code>this_is</code></li>
-   *   <li><code>thisIsATest</code>: <code>this_is_a_test</code></li>
-   *   <li><code>this1Is12A123Test1234</code>: <code>this_1_is_12_a_123_test_1234</code></li>
+   * <li><code>This</code>: <code>this</code></li>
+   * <li><code>ThisIs</code>: <code>this_is</code></li>
+   * <li><code>thisIsATest</code>: <code>this_is_a_test</code></li>
+   * <li><code>this1Is12A123Test1234</code>: <code>this_1_is_12_a_123_test_1234</code></li>
    * </ul>
    * <p>Adapted from <a href="http://stackoverflow.com/a/2560017/396747">Stack Overflow answer</a></p>
    *
@@ -346,6 +373,9 @@ public class Scaffolding {
     @JsonProperty
     private boolean read = false;
 
+    @JsonProperty("only_with_entity_directives")
+    private boolean onlyWithEntityDirectives = false;
+
     @JsonProperty
     private Set<String> entities = Sets.newHashSet();
 
@@ -355,18 +385,34 @@ public class Scaffolding {
     public ScaffoldingConfiguration() {
     }
 
+    /**
+     * @return The base package to read from/write to
+     */
     public String getBasePackage() {
       return basePackage;
     }
 
+    /**
+     * @return True if Scaffolding should scan the project looking for templates
+     */
     public boolean isRead() {
       return read;
+    }
+
+    /**
+     * @return True if Scaffolding should only store/use templates that contain entity directives in path or content
+     */
+    public boolean isOnlyWithEntityDirectives() {
+      return onlyWithEntityDirectives;
     }
 
     public Set<String> getEntities() {
       return entities;
     }
 
+    /**
+     * @return The base package in path format
+     */
     @JsonIgnore
     public String getBasePath() {
       return basePackage.replace(".", "/");
@@ -376,6 +422,9 @@ public class Scaffolding {
       this.projectUris = projectUris;
     }
 
+    /**
+     * @return The URIs for all discovered project content
+     */
     public Set<URI> getProjectUris() {
       return projectUris;
     }

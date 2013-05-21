@@ -42,6 +42,7 @@ To get `Scaffolding` to read your existing code you need to provide a `scaffoldi
 {
   "base_package":"uk.co.froot.example",
   "read": true,
+  "only_with_entity_directives": true,
   "entities": ["AdminUser"]
 }
 ```
@@ -51,7 +52,9 @@ All code from `base_package` and below will be recursively examined and template
 like `MongoAdminUserReadService.java` for example, then it will be treated as an entity template.
 
 Any class that does not include the name of one of the entities will be just a standard file that gets included everywhere
-(like `DateUtils` if you can't have a common support JAR for some reason).
+(like `DateUtils` if you can't have a common support JAR for some reason). You can filter these files using the
+`only_with_entity_directives=true` configuration. If set then only files associated with `AdminUser` will be made into
+templates.
 
 You then delete any that are not useful and edit those that remain to meet your requirements. The idea is to edit them
 to be as general purpose as possible (no entity-specific fields beyond the common ID for example).
