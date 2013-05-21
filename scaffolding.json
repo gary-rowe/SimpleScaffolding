@@ -1,5 +1,5 @@
 {
-  "base_package": "uk.gov.meto.standalone.tada",
+  "base_package": "uk.co.froot.example",
   "read": true,
   "only_with_entity_directives": true,
   "entities": ["ReportConfiguration"]

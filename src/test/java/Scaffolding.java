@@ -29,6 +29,7 @@ import java.util.regex.Pattern;
  * <li><code>package</code>: Base package, e.g. <code>org.example</code></li>
  * <li><code>entity-class</code>: Entity class, e.g. <code>AdminUser</code></li>
  * <li><code>entity-variable</code>: Entity variable, e.g. <code>adminUser</code></li>
+ * <li><code>entity-snake</code>: Entity as snake case, e.g. <code>admin_user</code></li>
  * </ul>
  * <h3>How to install</h3>
  * <p>Just copy this source code into your project under <code>src/test/java</code>. You might want to copy in <code>scaffolding.json</code>
@@ -41,6 +42,7 @@ import java.util.regex.Pattern;
  * {
  *   "base_package":"org.example.api",
  *   "read": true,
+ *   "only_with_entity_directives": true,
  *   "entities": ["User"]
  * }
  * </pre>
@@ -54,6 +56,7 @@ import java.util.regex.Pattern;
  * {
  *   "base_package":"org.example.api",
  *   "read": false,
+ *   "only_with_entity_directives": true,
  *   "entities": ["Role","Customer"]
  * }
  * </pre>
@@ -77,7 +80,7 @@ public class Scaffolding {
   private static final String ENTITY_VARIABLE_DIRECTIVE = "{{entity-variable}}";
   private static final String ENTITY_SNAKE_DIRECTIVE = "{{entity-snake}}";
   private static final String DIRECTIVE_REGEX = "\\{\\{entity.\\S+\\}\\}";
-  private static final Pattern ENTITY_DIRECTIVE_PATTERN =Pattern.compile(DIRECTIVE_REGEX);
+  private static final Pattern ENTITY_DIRECTIVE_PATTERN = Pattern.compile(DIRECTIVE_REGEX);
 
   /**
    * Main entry point to the scaffolding operations
@@ -185,7 +188,7 @@ public class Scaffolding {
         // Check if path or content must contain directives
         if (sc.isOnlyWithEntityDirectives() && !containsEntityDirectives(projectPath, content)) {
           // Ignore
-          System.err.println("Ignoring '"+projectPath+"' due to directive restriction.");
+          System.err.println("Ignoring '" + projectPath + "' due to directive restriction.");
           continue;
         }
 
@@ -233,7 +236,7 @@ public class Scaffolding {
         // Check if path or content must contain directives
         if (sc.isOnlyWithEntityDirectives() && !containsEntityDirectives(target, content)) {
           // Ignore
-          System.err.println("Ignoring '"+target+"' due to directive restriction.");
+          System.err.println("Ignoring '" + target + "' due to directive restriction.");
           continue;
         }
 
