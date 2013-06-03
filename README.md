@@ -62,8 +62,8 @@ to be as general purpose as possible (no entity-specific fields beyond the commo
 #### TIP: Use entities with "multi-word" names to get snake case
 
 The template reader can infer snake case locations so providing a "multi-word" entity name, like `AdminUser`
-instead of `AdminUser` will enable the correct placement of the directive in the template (e.g. `admin_user`). This is handy
-for JSON test fixtures and package names.
+instead of just `User` will enable the correct placement of the directive in the template (e.g. `admin_user`). This is handy
+for JSON test fixtures and Java package names.
 
 ### Try it now...
 
