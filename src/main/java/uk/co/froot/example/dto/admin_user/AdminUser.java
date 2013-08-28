@@ -4,9 +4,11 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonRootName;
 
 /**
- * <p>DTO provide the following to resources:</p>
+ * <p>Example DTO to provide the following to resources:</p>
  * <ul>
- * <li>Representation of user state</li>
+ * <li>Representation of "admin user" state</li>
+ * <li>Example REST endpoint is <code>/admin-user</code></li>
+ * <li>See <code>ApplicationPaths.ADMIN_USER</code></li>
  * </ul>
  *
  * @since 0.0.1

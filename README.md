@@ -5,7 +5,8 @@ Use this to rapidly create all the supporting code specific to your project for 
 
 Examples of use are:
 
-* Entities and their supporting structures (DAOs, repositories, services, resources, unit tests, models and so on)
+* Entities and their supporting structures (DAOs, repositories, services, REST resources, unit tests, fixtures,
+models and so on)
 * Rapid generation of common design patterns spanning multiple classes
 
 ### Isn't this already done with Maven archetypes?
@@ -25,6 +26,9 @@ the Handlebars notation with no spaces (e.g. `{{package}}`) listed below:
 * `entity-class`: Entity class, e.g. `AdminUser`
 * `entity-variable`: Entity variable, e.g. `adminUser`
 * `entity-snake`: Entity in snake case, e.g. `admin_user`
+* `entity-snake-upper`: Entity variable as uppercase snake case, e.g. `ADMIN_USER`</li>
+* `entity-comment`: Entity variable as a comment, e.g. `admin user`</li>
+* `entity-hyphen`: Entity variable in hyphenated form, e.g. `admin-user`</li>
 
 ### How to install
 
@@ -67,8 +71,9 @@ for JSON test fixtures and package names.
 
 ### Try it now...
 
-This project contains an example of a User DTO. Run `Scaffolding.main()` with `scaffolding.js` set as above. In the blink
-of an eye you'll have a template under `src/test/resources/scaffolding`.
+This project contains an example of a DTO (`AdminUser`). Run `Scaffolding.main()` with `scaffolding.js` set as
+above. In the blink of an eye you'll have a few templates under `src/test/resources/scaffolding`. Take a look at what
+ has been extracted - in particular examine the comments.
 
 ### Generate code from templates
 
@@ -84,23 +89,50 @@ files. You switch away from `read` and provide a list of new entities that you w
 ```
 
 Using the above, the generic templates built from the `AdminUser` will be used to produce the equivalent for `Role` and
-`Customer`. For example `MongoRoleReadService` and `MongoCustomerReadService`. If you have been careful with what was
-included in the original `AdminUser` then the produced code will act as good launch point for the new entities.
+`Customer`.
 
-### And once again...
+So execute `Scaffolding.main()` with `scaffolding.js` set as above. Then take a look under
+`src/main/java/uk/co/froot/example/dto`. You'll notice that in addition to the original `admin_user.AdminUser` there
+are now some new packages and classes in both the `src/main` and `src/test` branches. Following the example above
+you'll find `role.Role` and `customer.Customer`.
 
-Run `Scaffolding.main()` with `scaffolding.js` set as above. Then take a look under `src/main/java/uk/co/froot/example/dto`.
-You'll notice that the original `admin_user.AdminUser` has been substituted for `role.Role` and `customer.Customer`. Even the internal
-documentation has been filled in.
+They even have unit tests. Since `AdminUserTest` was available, `Scaffolding` was able to generate the unit tests,
+their test fixtures and some friendly entity-specific documentation.
 
 #### TIP: Use your IDE's version control view to strip out unwanted templates
 
-Some IDEs, such as Intellij, provide a Changes view which clearly highlights any new code that is not yet under version
-control. You can use this view to quickly strip out any unwanted code before committing the templates without having to
+Some IDEs, such as [Intellij](http://programmers.stackexchange.com/questions/21987/how-is-intellij-better-than-eclipse), provide a Changes view which clearly highlights any new code that is not yet under
+version control. You can use this view to quickly strip out any unwanted code before committing the templates without having to
 dig around in sub-directories.
 
 ### The long view
+
 Over time you'll build up a useful library of templates that fit with different types of projects which should add up to
 a [considerable time saving](http://www.xkcd.com/1205/). Later, when you come back to legacy projects based on different
 technologies than you've become used to, the templates for that project will still be there and will allow you to make
 the necessary additions much quicker.
+
+### I love this! How can I make a donation?
+
+Thank you for considering this. I maintain a [Bitcoin](http://bitcoin.org) donation address on [my personal blog]
+(http://gary-rowe.com).
+
+### Releases
+
+#### 1.3.0
+
+Added support for `entity-snake-upper`, `entity-comment`, `entity-hyphen`
+Tidied up documentation
+
+#### 1.2.0
+
+Added support for resources and filtering based on entity names only
+Updated documentation
+
+#### 1.1.0
+
+Added support for snake case
+
+#### 1.0.0
+
+Initial release - classes only

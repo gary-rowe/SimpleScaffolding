@@ -14,6 +14,9 @@ import java.net.URL;
 
 import static org.fest.assertions.api.Assertions.assertThat;
 
+/**
+ * Test that an "admin user" can be deserialized correctly from a fixture
+ */
 public class AdminUserTest {
 
   @Rule

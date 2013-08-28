@@ -29,26 +29,29 @@ import java.util.regex.Pattern;
  * <li><code>package</code>: Base package, e.g. <code>org.example</code></li>
  * <li><code>entity-class</code>: Entity class, e.g. <code>AdminUser</code></li>
  * <li><code>entity-variable</code>: Entity variable, e.g. <code>adminUser</code></li>
- * <li><code>entity-snake</code>: Entity as snake case, e.g. <code>admin_user</code></li>
+ * <li><code>entity-snake</code>: Entity variable as snake case, e.g. <code>admin_user</code></li>
+ * <li><code>entity-snake-upper</code>: Entity variable as uppercase snake case, e.g. <code>ADMIN_USER</code></li>
+ * <li><code>entity-comment</code>: Entity variable as a comment, e.g. <code>admin user</code></li>
+ * <li><code>entity-hyphen</code>: Entity variable in hyphenated form, e.g. <code>admin-user</code></li>
  * </ul>
  * <h3>How to install</h3>
  * <p>Just copy this source code into your project under <code>src/test/java</code>. You might want to copy in <code>scaffolding.json</code>
  * as well.</p>
  * <h3>Quickly generate templates from existing code</h3>
- * <p>Scaffolding is specific to your application so you can read existing examples and turn them into templates. After
- * a bit of editing they will be suitable for use in your application (and others based on it). To get <code>Scaffolding</code>
+ * <p><code>Scaffolding</code> is specific to your application so you can read existing examples and turn them into
+ * templates. After a bit of editing they will be suitable for use in your application (and others based on it). To get <code>Scaffolding</code>
  * to read your existing code you need to provide a <code>scaffolding.js</code> configuration like this:</p>
  * <pre>
  * {
  *   "base_package":"org.example.api",
  *   "read": true,
- *   "only_with_entity_directives": true,
- *   "entities": ["User"]
+ *   "entities": ["MyEntity"]
  * }
  * </pre>
  * <p>All code from <code>base_package</code> and below will be recursively examined and templates built. These will be
  * stored in a directory structure under <code>src/test/resources/scaffolding</code>. You can then delete any that are
- * not useful and edit those that remain to meet your requirements.</p>
+ * not useful and edit those that remain to meet your requirements. Usually there will be little to no editing
+ * required.</p>
  * <h3>Generate code from templates</h3>
  * <p>Once you have your templates in place, you can use them to generate new code. This is again driven by the <code>scaffolding.json</code>
  * files. You switch away from <code>read</code> and provide a list of new entities that you would like created:</p>
@@ -56,15 +59,15 @@ import java.util.regex.Pattern;
  * {
  *   "base_package":"org.example.api",
  *   "read": false,
- *   "only_with_entity_directives": true,
- *   "entities": ["Role","Customer"]
+ *   "entities": ["Role", "DataSource"]
  * }
  * </pre>
- * <p>Using the above, the generic templates built from the <code>User</code> will be used to produce the equivalent for <code>Role</code> and
- * <code>Customer</code>. If you have been careful with what is included in <code>User</code> then the produced code will act as good launch
- * point for the new entities.</p>
+ * <p>Using the above, the generic templates built from the <code>MyEntity</code> will be used to produce the
+ * equivalent for<code>Role</code> and <code>DataSource</code>. If you have been careful with what is included in
+ * <code>User</code> then the produced code will act as good launch point for the new entities.</p>
  *
  * @author Gary Rowe (http://gary-rowe.com)
+ * @since 1.3.0
  */
 public class Scaffolding {
 
@@ -78,7 +81,10 @@ public class Scaffolding {
   private static final String BASE_PACKAGE_PATH_DIRECTIVE = "{{package-path}}";
   private static final String ENTITY_CLASS_DIRECTIVE = "{{entity-class}}";
   private static final String ENTITY_VARIABLE_DIRECTIVE = "{{entity-variable}}";
+  private static final String ENTITY_HYPHEN_DIRECTIVE = "{{entity-hyphen}}";
+  private static final String ENTITY_COMMENT_DIRECTIVE = "{{entity-comment}}";
   private static final String ENTITY_SNAKE_DIRECTIVE = "{{entity-snake}}";
+  private static final String ENTITY_SNAKE_UPPER_DIRECTIVE = "{{entity-snake-upper}}";
   private static final String DIRECTIVE_REGEX = "\\{\\{entity.\\S+\\}\\}";
   private static final Pattern ENTITY_DIRECTIVE_PATTERN = Pattern.compile(DIRECTIVE_REGEX);
 
@@ -172,18 +178,30 @@ public class Scaffolding {
         // Build the patterns to recognise the entities
         String entityVariable = entity.substring(0, 1).toLowerCase() + entity.substring(1);
         String entitySnake = toSnakeCase(entityVariable);
+        String entityComment = toComment(entityVariable);
+        String entityHyphen = toHyphen(entityVariable);
 
         // Check for entity content
         content = content
           .replace(entity, ENTITY_CLASS_DIRECTIVE)
           .replace(entityVariable, ENTITY_VARIABLE_DIRECTIVE)
+            // Provide comment
+          .replace(entityComment, ENTITY_COMMENT_DIRECTIVE)
+            // Detect ADMIN_USER
+          .replace(entitySnake.toUpperCase(), ENTITY_SNAKE_UPPER_DIRECTIVE)
             // Detect admin_user and "admin_user"
-          .replace(entitySnake, ENTITY_SNAKE_DIRECTIVE);
+          .replace(entitySnake, ENTITY_SNAKE_DIRECTIVE)
+            // Detect admin-user
+          .replace(entityHyphen, ENTITY_HYPHEN_DIRECTIVE)
+        ;
 
         templateTarget = templateTarget
           .replace(entity, ENTITY_CLASS_DIRECTIVE)
           .replace(entityVariable, ENTITY_VARIABLE_DIRECTIVE)
-          .replace(entitySnake, ENTITY_SNAKE_DIRECTIVE);
+          .replace(entitySnake.toUpperCase(), ENTITY_SNAKE_UPPER_DIRECTIVE)
+          .replace(entitySnake, ENTITY_SNAKE_DIRECTIVE)
+          .replace(entityHyphen, ENTITY_HYPHEN_DIRECTIVE)
+        ;
 
         // Check if path or content must contain directives
         if (sc.isOnlyWithEntityDirectives() && !containsEntityDirectives(projectPath, content)) {
@@ -196,6 +214,15 @@ public class Scaffolding {
         writeResult(content, templateTarget);
       }
     }
+  }
+
+  /**
+   * @param path    The path
+   * @param content The content
+   * @return True if either the path or content contain entity directives
+   */
+  private boolean containsEntityDirectives(String path, String content) {
+    return ENTITY_DIRECTIVE_PATTERN.matcher(path).find() || ENTITY_DIRECTIVE_PATTERN.matcher(content).find();
   }
 
   /**
@@ -217,12 +244,17 @@ public class Scaffolding {
 
       String entityVariable = entity.substring(0, 1).toLowerCase() + entity.substring(1);
       String entitySnake = toSnakeCase(entityVariable);
+      String entityHyphen = toHyphen(entityVariable);
+      String entityComment = toComment(entityVariable);
 
       Map<String, String> directiveMap = Maps.newHashMap();
       directiveMap.put(BASE_PACKAGE_DIRECTIVE, basePackage);
       directiveMap.put(BASE_PACKAGE_PATH_DIRECTIVE, sc.getBasePath());
       directiveMap.put(ENTITY_CLASS_DIRECTIVE, entity);
       directiveMap.put(ENTITY_VARIABLE_DIRECTIVE, entityVariable);
+      directiveMap.put(ENTITY_HYPHEN_DIRECTIVE, entityHyphen);
+      directiveMap.put(ENTITY_COMMENT_DIRECTIVE, entityComment);
+      directiveMap.put(ENTITY_SNAKE_UPPER_DIRECTIVE, entitySnake.toUpperCase());
       directiveMap.put(ENTITY_SNAKE_DIRECTIVE, entitySnake);
 
       for (Map.Entry<String, String> templateEntry : templateMap.entrySet()) {
@@ -288,16 +320,7 @@ public class Scaffolding {
   }
 
   /**
-   * @param path    The path
-   * @param content The content
-   * @return True if either the path or content contain entity directives
-   */
-  private boolean containsEntityDirectives(String path, String content) {
-    return ENTITY_DIRECTIVE_PATTERN.matcher(path).find() || ENTITY_DIRECTIVE_PATTERN.matcher(content).find();
-  }
-
-  /**
-   * <p>Converts camel case to snake snake case as follows:</p>
+   * <p>Converts camel case to snake case as follows:</p>
    * <ul>
    * <li><code>This</code>: <code>this</code></li>
    * <li><code>ThisIs</code>: <code>this_is</code></li>
@@ -317,6 +340,54 @@ public class Scaffolding {
         "(?<=[A-Za-z])(?=[^A-Za-z])"
       ),
       "_"
+    ).toLowerCase();
+  }
+
+  /**
+   * <p>Converts camel case to document as follows:</p>
+   * <ul>
+   * <li><code>This</code>: <code>this</code></li>
+   * <li><code>ThisIs</code>: <code>this is</code></li>
+   * <li><code>thisIsATest</code>: <code>this is a test</code></li>
+   * <li><code>this1Is12A123Test1234</code>: <code>this 1 is 12 a 123 test 1234</code></li>
+   * </ul>
+   * <p>Adapted from <a href="http://stackoverflow.com/a/2560017/396747">Stack Overflow answer</a></p>
+   *
+   * @param camelCase The camel case (with arbitrary initial capitalisation)
+   * @return A document version in lowercase (useful for describing entities in Javadocs)
+   */
+  private String toComment(String camelCase) {
+    return camelCase.replaceAll(
+      String.format("%s|%s|%s",
+        "(?<=[A-Z])(?=[A-Z][a-z])",
+        "(?<=[^A-Z])(?=[A-Z])",
+        "(?<=[A-Za-z])(?=[^A-Za-z])"
+      ),
+      " "
+    ).toLowerCase();
+  }
+
+  /**
+   * <p>Converts camel case to hyphenated as follows:</p>
+   * <ul>
+   * <li><code>This</code>: <code>this</code></li>
+   * <li><code>ThisIs</code>: <code>this-is</code></li>
+   * <li><code>thisIsATest</code>: <code>this-is-a-test</code></li>
+   * <li><code>this1Is12A123Test1234</code>: <code>this-1-is-12-a-123-test-1234</code></li>
+   * </ul>
+   * <p>Adapted from <a href="http://stackoverflow.com/a/2560017/396747">Stack Overflow answer</a></p>
+   *
+   * @param camelCase The camel case (with arbitrary initial capitalisation)
+   * @return A hyphen version in lowercase (useful for describing entities in RESTful endpoints)
+   */
+  private String toHyphen(String camelCase) {
+    return camelCase.replaceAll(
+      String.format("%s|%s|%s",
+        "(?<=[A-Z])(?=[A-Z][a-z])",
+        "(?<=[^A-Z])(?=[A-Z])",
+        "(?<=[A-Za-z])(?=[^A-Za-z])"
+      ),
+      "-"
     ).toLowerCase();
   }
 

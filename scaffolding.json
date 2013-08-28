@@ -1,6 +1,6 @@
 {
   "base_package": "uk.co.froot.example",
-  "read": true,
+  "read": false,
   "only_with_entity_directives": true,
-  "entities": ["ReportConfiguration"]
+  "entities": ["DataSource"]
 }
