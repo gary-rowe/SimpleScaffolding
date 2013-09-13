@@ -10,6 +10,26 @@
   <name>Simple Scaffolding</name>
   <description>Provides simple scaffolding based on templates and entities</description>
   <inceptionYear>2013</inceptionYear>
+  
+  <build>
+
+    <plugins>
+
+      <!-- All compilation is done under Java6 -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <version>2.3</version>
+        <configuration>
+          <source>1.6</source>
+          <target>1.6</target>
+          <debug>true</debug>
+        </configuration>
+      </plugin>
+
+    </plugins>
+
+  </build>
 
   <dependencies>
 
