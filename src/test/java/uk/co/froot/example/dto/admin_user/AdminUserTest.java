@@ -42,8 +42,8 @@ public class AdminUserTest {
       // Assert
       assertThat(testObject.getId()).isEqualTo(1);
 
-      // Perform a crude CRLF clean to allow for Win/Linux differences
-      assertThat(result.replace("\\r","").replace("\\n","")).isEqualTo(expected.replace("\\r","").replace("\\n",""));
+      // Perform a crude whitespace clean to allow for Win/Linux differences
+      assertThat(result.replaceAll("\\s","")).isEqualTo(expected.replaceAll("\\s",""));
 
   }
 
