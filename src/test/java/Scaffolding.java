@@ -8,7 +8,12 @@ import com.google.common.collect.Sets;
 import com.google.common.io.Files;
 import com.google.common.io.Resources;
 
-import java.io.*;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.Writer;
 import java.net.URI;
 import java.nio.charset.Charset;
 import java.util.Map;
@@ -67,7 +72,7 @@ import java.util.regex.Pattern;
  * <code>User</code> then the produced code will act as good launch point for the new entities.</p>
  *
  * @author Gary Rowe (http://gary-rowe.com)
- * @since 1.3.0
+ * @since 1.4.0
  */
 public class Scaffolding {
 
@@ -75,11 +80,27 @@ public class Scaffolding {
   private static final String SCAFFOLDING = "scaffolding/";
   private static final String BASE_TEMPLATE_PATH = "src/test/resources/" + SCAFFOLDING;
   private static final String BASE_SRC_PATH = "src";
+  private static final String ROOT_PATH = ".";
+
+  // File filters
+  private static final String[] IGNORE_FILE_REGEXES = new String[]{
+    "scaffolding.json$",
+    ".*\\.classpath$",
+    ".*\\.project$",
+    ".*\\.wtpmodules$",
+    ".*\\.iml$",
+    ".*\\.iws$",
+    ".*nb.*\\.xml$",
+    ".*\\.DS_Store$",
+    ".*\\.xdoclet$"
+  };
+  private static final Pattern[] ignoreFilePatterns = new Pattern[IGNORE_FILE_REGEXES.length];
 
   // Directives
   private static final String BASE_PACKAGE_DIRECTIVE = "{{package}}";
   private static final String BASE_PACKAGE_PATH_DIRECTIVE = "{{package-path}}";
   private static final String ENTITY_CLASS_DIRECTIVE = "{{entity-class}}";
+  private static final String ENTITY_TITLE_DIRECTIVE = "{{entity-title}}";
   private static final String ENTITY_VARIABLE_DIRECTIVE = "{{entity-variable}}";
   private static final String ENTITY_HYPHEN_DIRECTIVE = "{{entity-hyphen}}";
   private static final String ENTITY_COMMENT_DIRECTIVE = "{{entity-comment}}";
@@ -92,7 +113,8 @@ public class Scaffolding {
    * Main entry point to the scaffolding operations
    *
    * @param args [0]: path to <code>scaffolding.json</code>
-   * @throws IOException If something goes wrong
+   *
+   * @throws java.io.IOException If something goes wrong
    */
   public static void main(String[] args) throws IOException {
 
@@ -102,6 +124,11 @@ public class Scaffolding {
 
     InputStream is = new FileInputStream(args[0]);
     ObjectMapper mapper = new ObjectMapper();
+
+    // Pre-compile the "ignore file" patterns
+    for (int i = 0; i < IGNORE_FILE_REGEXES.length; i++) {
+      ignoreFilePatterns[i] = Pattern.compile(IGNORE_FILE_REGEXES[i]);
+    }
 
     ScaffoldingConfiguration sc = mapper.readValue(is, Scaffolding.ScaffoldingConfiguration.class);
 
@@ -113,7 +140,8 @@ public class Scaffolding {
    * Executes the process
    *
    * @param sc The configuration
-   * @throws IOException If something goes wrong
+   *
+   * @throws java.io.IOException If something goes wrong
    */
   private void run(ScaffoldingConfiguration sc) throws IOException {
 
@@ -127,6 +155,33 @@ public class Scaffolding {
       Set<URI> projectUris = Sets.newHashSet();
       recurseFiles(BASE_SRC_PATH, projectUris);
       sc.setProjectUris(projectUris);
+
+      // Add root level files
+      File[] files = new File(ROOT_PATH).listFiles();
+      if (files != null) {
+        for (File file : files) {
+          if (file.isDirectory()) {
+            continue;
+          }
+
+          String fileName = file.getName();
+
+          // Handle common exclusions
+          boolean ignore = false;
+          for (Pattern pattern : ignoreFilePatterns) {
+            if (pattern.matcher(fileName).matches()) {
+              // It's on the ignore list
+              ignore = true;
+            }
+          }
+
+          if (!ignore) {
+            projectUris.add(file.toURI());
+          } else {
+            System.err.println("Ignoring '" + fileName + "'");
+          }
+        }
+      }
 
       readTemplates(sc);
 
@@ -148,7 +203,8 @@ public class Scaffolding {
    * Scans the existing project and builds templates from the code
    *
    * @param sc The configuration
-   * @throws IOException If something goes wrong
+   *
+   * @throws java.io.IOException If something goes wrong
    */
   private void readTemplates(ScaffoldingConfiguration sc) throws IOException {
 
@@ -177,6 +233,7 @@ public class Scaffolding {
 
         // Build the patterns to recognise the entities
         String entityVariable = entity.substring(0, 1).toLowerCase() + entity.substring(1);
+        String entityTitle = toTitle(entityVariable);
         String entitySnake = toSnakeCase(entityVariable);
         String entityComment = toComment(entityVariable);
         String entityHyphen = toHyphen(entityVariable);
@@ -184,8 +241,11 @@ public class Scaffolding {
         // Check for entity content
         content = content
           .replace(entity, ENTITY_CLASS_DIRECTIVE)
+            // Detect title case (e.g. in README)
+          .replace(entityTitle, ENTITY_TITLE_DIRECTIVE)
+            // Detect variable case (e.g. in methods)
           .replace(entityVariable, ENTITY_VARIABLE_DIRECTIVE)
-            // Provide comment
+            // Detect comment (e.g. in Javadocs)
           .replace(entityComment, ENTITY_COMMENT_DIRECTIVE)
             // Detect ADMIN_USER
           .replace(entitySnake.toUpperCase(), ENTITY_SNAKE_UPPER_DIRECTIVE)
@@ -197,6 +257,7 @@ public class Scaffolding {
 
         templateTarget = templateTarget
           .replace(entity, ENTITY_CLASS_DIRECTIVE)
+          .replace(entityTitle, ENTITY_TITLE_DIRECTIVE)
           .replace(entityVariable, ENTITY_VARIABLE_DIRECTIVE)
           .replace(entitySnake.toUpperCase(), ENTITY_SNAKE_UPPER_DIRECTIVE)
           .replace(entitySnake, ENTITY_SNAKE_DIRECTIVE)
@@ -219,6 +280,7 @@ public class Scaffolding {
   /**
    * @param path    The path
    * @param content The content
+   *
    * @return True if either the path or content contain entity directives
    */
   private boolean containsEntityDirectives(String path, String content) {
@@ -229,12 +291,14 @@ public class Scaffolding {
    * Handles the process of writing out the templates
    *
    * @param sc The configuration
-   * @throws IOException If something goes wrong
+   *
+   * @throws java.io.IOException If something goes wrong
    */
   private void writeTemplates(ScaffoldingConfiguration sc) throws IOException {
 
     Set<String> entities = sc.getEntities();
     String basePackage = sc.getBasePackage();
+    String outputDirectory = sc.getOutputDirectory();
 
     // Read all the templates
     Map<String, String> templateMap = buildTemplateMap(sc);
@@ -243,6 +307,7 @@ public class Scaffolding {
     for (String entity : entities) {
 
       String entityVariable = entity.substring(0, 1).toLowerCase() + entity.substring(1);
+      String entityTitle = toTitle(entityVariable);
       String entitySnake = toSnakeCase(entityVariable);
       String entityHyphen = toHyphen(entityVariable);
       String entityComment = toComment(entityVariable);
@@ -251,6 +316,7 @@ public class Scaffolding {
       directiveMap.put(BASE_PACKAGE_DIRECTIVE, basePackage);
       directiveMap.put(BASE_PACKAGE_PATH_DIRECTIVE, sc.getBasePath());
       directiveMap.put(ENTITY_CLASS_DIRECTIVE, entity);
+      directiveMap.put(ENTITY_TITLE_DIRECTIVE, entityTitle);
       directiveMap.put(ENTITY_VARIABLE_DIRECTIVE, entityVariable);
       directiveMap.put(ENTITY_HYPHEN_DIRECTIVE, entityHyphen);
       directiveMap.put(ENTITY_COMMENT_DIRECTIVE, entityComment);
@@ -281,7 +347,7 @@ public class Scaffolding {
         }
 
         // Write out the result
-        writeResult(content, target);
+        writeResult(content, outputDirectory + "/" + target);
       }
 
     }
@@ -290,7 +356,8 @@ public class Scaffolding {
 
   /**
    * @return A Map keyed on the target name and containing the template with directives
-   * @throws IOException If something goes wrong
+   *
+   * @throws java.io.IOException If something goes wrong
    */
   private Map<String, String> buildTemplateMap(ScaffoldingConfiguration sc) throws IOException {
 
@@ -330,6 +397,7 @@ public class Scaffolding {
    * <p>Adapted from <a href="http://stackoverflow.com/a/2560017/396747">Stack Overflow answer</a></p>
    *
    * @param camelCase The camel case (with arbitrary initial capitalisation)
+   *
    * @return A snake case version in lowercase
    */
   private String toSnakeCase(String camelCase) {
@@ -344,7 +412,7 @@ public class Scaffolding {
   }
 
   /**
-   * <p>Converts camel case to document as follows:</p>
+   * <p>Converts camel case to document lowercase as follows:</p>
    * <ul>
    * <li><code>This</code>: <code>this</code></li>
    * <li><code>ThisIs</code>: <code>this is</code></li>
@@ -354,6 +422,7 @@ public class Scaffolding {
    * <p>Adapted from <a href="http://stackoverflow.com/a/2560017/396747">Stack Overflow answer</a></p>
    *
    * @param camelCase The camel case (with arbitrary initial capitalisation)
+   *
    * @return A document version in lowercase (useful for describing entities in Javadocs)
    */
   private String toComment(String camelCase) {
@@ -368,7 +437,7 @@ public class Scaffolding {
   }
 
   /**
-   * <p>Converts camel case to hyphenated as follows:</p>
+   * <p>Converts camel case to hyphenated lowercase as follows:</p>
    * <ul>
    * <li><code>This</code>: <code>this</code></li>
    * <li><code>ThisIs</code>: <code>this-is</code></li>
@@ -378,6 +447,7 @@ public class Scaffolding {
    * <p>Adapted from <a href="http://stackoverflow.com/a/2560017/396747">Stack Overflow answer</a></p>
    *
    * @param camelCase The camel case (with arbitrary initial capitalisation)
+   *
    * @return A hyphen version in lowercase (useful for describing entities in RESTful endpoints)
    */
   private String toHyphen(String camelCase) {
@@ -392,10 +462,41 @@ public class Scaffolding {
   }
 
   /**
+   * <p>Converts camel case to title case with spaces as follows:</p>
+   * <ul>
+   * <li><code>This</code>: <code>This</code></li>
+   * <li><code>ThisIs</code>: <code>This is</code></li>
+   * <li><code>thisIsATest</code>: <code>This Is A Test</code></li>
+   * <li><code>this1Is12A123Test1234</code>: <code>This 1 Is 12 A 123 Test 1234</code></li>
+   * </ul>
+   * <p>Adapted from <a href="http://stackoverflow.com/a/2560017/396747">Stack Overflow answer</a></p>
+   *
+   * @param camelCase The camel case (with arbitrary initial capitalisation)
+   *
+   * @return A document version in title case (useful for describing entities in titles)
+   */
+  private String toTitle(String camelCase) {
+    String spaced = camelCase.replaceAll(
+      String.format("%s|%s|%s",
+        "(?<=[A-Z])(?=[A-Z][a-z])",
+        "(?<=[^A-Z])(?=[A-Z])",
+        "(?<=[A-Za-z])(?=[^A-Za-z])"
+      ),
+      " "
+    );
+
+    return spaced.substring(0, 1).toUpperCase() + spaced.substring(1);
+  }
+
+  /**
+   * <p>Recursive method</p>
+   *
    * @param directory   The starting directory
    * @param projectUris The set of URIs for all the files
+   *
    * @return The set of all URIs
-   * @throws IOException If something goes wrong
+   *
+   * @throws java.io.IOException If something goes wrong
    */
   private Set<URI> recurseFiles(String directory, Set<URI> projectUris) throws IOException {
 
@@ -418,7 +519,8 @@ public class Scaffolding {
   /**
    * @param content  The content
    * @param fileName The file name
-   * @throws IOException If something goes wrong
+   *
+   * @throws java.io.IOException If something goes wrong
    */
   private void writeResult(String content, String fileName) throws IOException {
 
@@ -437,9 +539,12 @@ public class Scaffolding {
   }
 
   /**
-   * <p>Configuration to use when reading or writing the templates. See {@link Scaffolding} for how it is used.</p>
+   * <p>Configuration to use when reading or writing the templates.</p>
    */
   public static class ScaffoldingConfiguration {
+
+    @JsonProperty("output_directory")
+    private String outputDirectory = ".";
 
     @JsonProperty("base_package")
     private String basePackage = "org.example";
@@ -457,6 +562,14 @@ public class Scaffolding {
     private Set<URI> projectUris = Sets.newHashSet();
 
     public ScaffoldingConfiguration() {
+    }
+
+    /**
+     *
+     * @return The output directory when writing (e.g. ".", "target/generated-sources")
+     */
+    public String getOutputDirectory() {
+      return outputDirectory;
     }
 
     /**

@@ -25,6 +25,7 @@ the Handlebars notation with no spaces (e.g. `{{package}}`) listed below:
 * `package`: Base package, e.g. `org.example`
 * `entity-class`: Entity class, e.g. `AdminUser`
 * `entity-variable`: Entity variable, e.g. `adminUser`
+* `entity-title`: Entity in title case, e.g. `Admin User`
 * `entity-snake`: Entity in snake case, e.g. `admin_user`
 * `entity-snake-upper`: Entity variable as uppercase snake case, e.g. `ADMIN_USER`</li>
 * `entity-comment`: Entity variable as a comment, e.g. `admin user`</li>
@@ -44,6 +45,7 @@ To get `Scaffolding` to read your existing code you need to provide a `scaffoldi
 
 ```json
 {
+  "output_directory":"target/generated-resources",
   "base_package":"uk.co.froot.example",
   "read": true,
   "only_with_entity_directives": true,
@@ -82,6 +84,7 @@ files. You switch away from `read` and provide a list of new entities that you w
 
 ```json
 {
+  "output_directory":".",
   "base_package":"uk.co.froot.example",
   "read": false,
   "entities": ["Role","Customer"]
@@ -118,6 +121,12 @@ Thank you for considering this. I maintain a [Bitcoin](http://bitcoin.org) donat
 (http://gary-rowe.com).
 
 ### Releases
+
+#### 1.4.0
+
+Added support for `entity-title`
+Allow files in the project root to be included (with standard VCS exclusions like `*.iml`)
+Added support for output directory (e.g. "target/generated-sources")
 
 #### 1.3.0
 
