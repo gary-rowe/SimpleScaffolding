@@ -72,7 +72,7 @@ import java.util.regex.Pattern;
  * <code>User</code> then the produced code will act as good launch point for the new entities.</p>
  *
  * @author Gary Rowe (http://gary-rowe.com)
- * @since 1.4.0
+ * @since 1.5.0
  */
 public class Scaffolding {
 
