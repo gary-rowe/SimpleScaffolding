@@ -1,7 +1,8 @@
 {
+  "profile": "default",
   "output_directory": ".",
   "base_package": "uk.co.froot.example",
-  "read": false,
-  "only_with_entity_directives": true,
-  "entities": ["DataSource"]
+  "read": true,
+  "only_with_entity_directives": false,
+  "entities": ["AdminUser"]
 }

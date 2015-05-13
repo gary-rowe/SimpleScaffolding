@@ -191,7 +191,7 @@ public class Scaffolding {
 
       // Build URIs for all files within the project
       Set<URI> projectUris = Sets.newHashSet();
-      recurseFiles(BASE_TEMPLATE_PATH, projectUris);
+      recurseFiles(BASE_TEMPLATE_PATH + sc.getProfilePath(), projectUris);
       sc.setProjectUris(projectUris);
 
       writeTemplates(sc);
@@ -226,7 +226,7 @@ public class Scaffolding {
       for (String entity : entities) {
 
         // Work out the template target
-        String templateTarget = BASE_TEMPLATE_PATH + projectPath + ".hbs";
+        String templateTarget = BASE_TEMPLATE_PATH + sc.getProfilePath() + projectPath + ".hbs";
 
         // Introduce the base package directive
         String content = sourceCode.replace(basePackage, BASE_PACKAGE_DIRECTIVE);
@@ -374,7 +374,7 @@ public class Scaffolding {
       // Filter out any non-scaffolding resources
       if (projectPath.contains(SCAFFOLDING) && projectPath.endsWith(".hbs")) {
 
-        String target = projectPath.replace(BASE_TEMPLATE_PATH, "");
+        String target = projectPath.replace(BASE_TEMPLATE_PATH + sc.getProfilePath(), "");
         String template = Resources.toString(uri.toURL(), Charsets.UTF_8);
 
         templateMap.put(target, template);
@@ -543,6 +543,9 @@ public class Scaffolding {
    */
   public static class ScaffoldingConfiguration {
 
+    @JsonProperty("profile")
+    private String profile = "";
+
     @JsonProperty("output_directory")
     private String outputDirectory = ".";
 
@@ -565,7 +568,36 @@ public class Scaffolding {
     }
 
     /**
+     * A profile name is appended as "src/test/resources/scaffolding"+profile to manage
+     * collections of scaffolding templates targeting different variations
      *
+     * For example, a profile of "dw-0.6.1-mongodb" could be used to indicate that these
+     * template would create a Dropwizard v0.6.1 microservice containing suitable data access code
+     * for MongoDB
+     *
+     * @return The name of the profile (e.g. "dw-0.6.1-mongodb")
+     */
+    public String getProfile() {
+      return profile;
+    }
+
+    /**
+     * @return The name of the profile with path separator appended (if not empty)
+     */
+    public String getProfilePath() {
+
+      if (profile == null || profile.length()==0) {
+        return "";
+      }
+
+      if (!profile.endsWith("/")) {
+        return profile + "/";
+      }
+
+      return profile;
+    }
+
+    /**
      * @return The output directory when writing (e.g. ".", "target/generated-sources")
      */
     public String getOutputDirectory() {

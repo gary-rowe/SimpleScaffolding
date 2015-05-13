@@ -45,6 +45,7 @@ To get `Scaffolding` to read your existing code you need to provide a `scaffoldi
 
 ```json
 {
+  "profile":"default",
   "output_directory":"target/generated-resources",
   "base_package":"uk.co.froot.example",
   "read": true,
@@ -54,7 +55,7 @@ To get `Scaffolding` to read your existing code you need to provide a `scaffoldi
 ```
 
 All code from `base_package` and below will be recursively examined and templates built. These will be stored under
-`src/test/resources/scaffolding`. If a class including the name of one of the entities (`AdminUser`) is discovered
+`src/test/resources/scaffolding/default`. If a class including the name of one of the entities (`AdminUser`) is discovered
 like `MongoAdminUserReadService.java` for example, then it will be treated as an entity template.
 
 Any class that does not include the name of one of the entities will be just a standard file that gets included everywhere
@@ -68,13 +69,13 @@ to be as general purpose as possible (no entity-specific fields beyond the commo
 #### TIP: Use entities with "multi-word" names to get snake case
 
 The template reader can infer snake case locations so providing a "multi-word" entity name, like `AdminUser`
-instead of `AdminUser` will enable the correct placement of the directive in the template (e.g. `admin_user`). This is handy
+instead of `User` will enable the correct placement of the directive in the template (e.g. `admin_user`). This is handy
 for JSON test fixtures and package names.
 
 ### Try it now...
 
 This project contains an example of a DTO (`AdminUser`). Run `Scaffolding.main()` with `scaffolding.js` set as
-above. In the blink of an eye you'll have a few templates under `src/test/resources/scaffolding`. Take a look at what
+above. In the blink of an eye you'll have a few templates under `src/test/resources/scaffolding/default`. Take a look at what
  has been extracted - in particular examine the comments.
 
 ### Generate code from templates
@@ -84,6 +85,7 @@ files. You switch away from `read` and provide a list of new entities that you w
 
 ```json
 {
+  "profile":"default",
   "output_directory":".",
   "base_package":"uk.co.froot.example",
   "read": false,
@@ -92,9 +94,10 @@ files. You switch away from `read` and provide a list of new entities that you w
 ```
 
 Using the above, the generic templates built from the `AdminUser` will be used to produce the equivalent for `Role` and
-`Customer`.
+`Customer`. The `profile` identifies which directory path under `src/test/scaffolding` will be used as the basis so that
+collections of templates with simple variations can be managed.
 
-So execute `Scaffolding.main()` with `scaffolding.js` set as above. Then take a look under
+Execute `Scaffolding.main()` with `scaffolding.js` set as above. Then take a look under
 `src/main/java/uk/co/froot/example/dto`. You'll notice that in addition to the original `admin_user.AdminUser` there
 are now some new packages and classes in both the `src/main` and `src/test` branches. Following the example above
 you'll find `role.Role` and `customer.Customer`.
@@ -115,12 +118,22 @@ a [considerable time saving](http://www.xkcd.com/1205/). Later, when you come ba
 technologies than you've become used to, the templates for that project will still be there and will allow you to make
 the necessary additions much quicker.
 
+By using the `profile` you can create versioned variants so that, for example, you could have a "Dropwizard Scaffolding"
+project that provides variants based on version 0.6.1 for Java 6 environments and 0.8.1 for Java 8 environments. These
+could be further partitioned to support, say, different Resource templates targeting different data access strategies
+(external database, upstream HTTP with resilient failover etc).
+
 ### I love this! How can I make a donation?
 
 Thank you for considering this. I maintain a [Bitcoin](http://bitcoin.org) donation address on [my personal blog]
 (http://gary-rowe.com).
 
 ### Releases
+
+#### 1.5.0
+
+Added support for `profile`
+Allow scaffolding templates to be stored in an arbitrary hierarchy to cover multiple targets
 
 #### 1.4.0
 
