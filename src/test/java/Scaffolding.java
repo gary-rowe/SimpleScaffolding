@@ -1,12 +1,16 @@
+package uk.gov.meto.codegen.service;
+
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Charsets;
 import com.google.common.base.Preconditions;
+import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import com.google.common.io.Files;
 import com.google.common.io.Resources;
+import com.google.common.reflect.ClassPath;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -15,6 +19,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.Writer;
 import java.net.URI;
+import java.net.URLDecoder;
 import java.nio.charset.Charset;
 import java.util.Map;
 import java.util.Set;
@@ -48,22 +53,31 @@ import java.util.regex.Pattern;
  * to read your existing code you need to provide a <code>scaffolding.js</code> configuration like this:</p>
  * <pre>
  * {
- *   "base_package":"org.example.api",
+ *   "profile": "example-microservice",
+ *   "output_directory": "target/generated-service",
+ *   "template_location": "src/test/resources/scaffolding",
+ *   "base_package": "org.example.service",
  *   "read": true,
+ *   "only_with_entity_directives": false,
  *   "entities": ["MyEntity"]
  * }
+ *
  * </pre>
  * <p>All code from <code>base_package</code> and below will be recursively examined and templates built. These will be
- * stored in a directory structure under <code>src/test/resources/scaffolding</code>. You can then delete any that are
- * not useful and edit those that remain to meet your requirements. Usually there will be little to no editing
- * required.</p>
+ * stored in a directory structure under <code>src/test/resources/scaffolding</code> (from <code>template_location</code>).
+ * You can then delete any that are not useful and edit those that remain to meet your requirements. Usually there will
+ * be little to no editing required.</p>
  * <h3>Generate code from templates</h3>
  * <p>Once you have your templates in place, you can use them to generate new code. This is again driven by the <code>scaffolding.json</code>
  * files. You switch away from <code>read</code> and provide a list of new entities that you would like created:</p>
  * <pre>
  * {
- *   "base_package":"org.example.api",
+ *   "profile": "example-microservice",
+ *   "output_directory": "target/generated-service",
+ *   "template_location": "classpath:/scaffolding",
+ *   "base_package": "org.example.service",
  *   "read": false,
+ *   "only_with_entity_directives": false,
  *   "entities": ["Role", "DataSource"]
  * }
  * </pre>
@@ -71,14 +85,15 @@ import java.util.regex.Pattern;
  * equivalent for<code>Role</code> and <code>DataSource</code>. If you have been careful with what is included in
  * <code>User</code> then the produced code will act as good launch point for the new entities.</p>
  *
+ * <p>Note that <code>template_location</code> has been adjusted to show support for reading templates off a classpath
+ * location.</p>
+ *
  * @author Gary Rowe (http://gary-rowe.com)
- * @since 1.5.0
+ * @since 1.6.0
  */
 public class Scaffolding {
 
   // Base path locations
-  private static final String SCAFFOLDING = "scaffolding/";
-  private static final String BASE_TEMPLATE_PATH = "src/test/resources/" + SCAFFOLDING;
   private static final String BASE_SRC_PATH = "src";
   private static final String ROOT_PATH = ".";
 
@@ -109,8 +124,24 @@ public class Scaffolding {
   private static final String DIRECTIVE_REGEX = "\\{\\{entity.\\S+\\}\\}";
   private static final Pattern ENTITY_DIRECTIVE_PATTERN = Pattern.compile(DIRECTIVE_REGEX);
 
+  static {
+    // Pre-compile the "ignore file" patterns
+    for (int i = 0; i < IGNORE_FILE_REGEXES.length; i++) {
+      ignoreFilePatterns[i] = Pattern.compile(IGNORE_FILE_REGEXES[i]);
+    }
+  }
+
+  private final ScaffoldingConfiguration sc;
+
   /**
-   * Main entry point to the scaffolding operations
+   * @param sc The scaffolding configuration
+   */
+  public Scaffolding(ScaffoldingConfiguration sc) {
+    this.sc = sc;
+  }
+
+  /**
+   * Main entry point to the scaffolding operations if running from an IDE
    *
    * @param args [0]: path to <code>scaffolding.json</code>
    *
@@ -125,78 +156,198 @@ public class Scaffolding {
     InputStream is = new FileInputStream(args[0]);
     ObjectMapper mapper = new ObjectMapper();
 
-    // Pre-compile the "ignore file" patterns
-    for (int i = 0; i < IGNORE_FILE_REGEXES.length; i++) {
-      ignoreFilePatterns[i] = Pattern.compile(IGNORE_FILE_REGEXES[i]);
-    }
+    ScaffoldingConfiguration sc = mapper.readValue(is, ScaffoldingConfiguration.class);
 
-    ScaffoldingConfiguration sc = mapper.readValue(is, Scaffolding.ScaffoldingConfiguration.class);
-
-    new Scaffolding().run(sc);
+    new Scaffolding(sc).run();
 
   }
 
   /**
    * Executes the process
    *
-   * @param sc The configuration
-   *
    * @throws java.io.IOException If something goes wrong
    */
-  private void run(ScaffoldingConfiguration sc) throws IOException {
+  public void run() throws IOException {
 
     Preconditions.checkNotNull(sc);
 
     if (sc.isRead()) {
 
-      System.out.println("Reading existing project and extracting templates");
-
-      // Build URIs for all files within the project
-      Set<URI> projectUris = Sets.newHashSet();
-      recurseFiles(BASE_SRC_PATH, projectUris);
-      sc.setProjectUris(projectUris);
-
-      // Add root level files
-      File[] files = new File(ROOT_PATH).listFiles();
-      if (files != null) {
-        for (File file : files) {
-          if (file.isDirectory()) {
-            continue;
-          }
-
-          String fileName = file.getName();
-
-          // Handle common exclusions
-          boolean ignore = false;
-          for (Pattern pattern : ignoreFilePatterns) {
-            if (pattern.matcher(fileName).matches()) {
-              // It's on the ignore list
-              ignore = true;
-            }
-          }
-
-          if (!ignore) {
-            projectUris.add(file.toURI());
-          } else {
-            System.err.println("Ignoring '" + fileName + "'");
-          }
-        }
-      }
-
-      readTemplates(sc);
+      handleRead();
 
     } else {
 
-      System.out.println("Writing new code from templates");
-
-      // Build URIs for all files within the project
-      Set<URI> projectUris = Sets.newHashSet();
-      recurseFiles(BASE_TEMPLATE_PATH + sc.getProfilePath(), projectUris);
-      sc.setProjectUris(projectUris);
-
-      writeTemplates(sc);
+      handleWrite();
     }
 
+  }
+
+  /**
+   * <p>Converts camel case to snake case as follows:</p>
+   * <ul>
+   * <li><code>This</code>: <code>this</code></li>
+   * <li><code>ThisIs</code>: <code>this_is</code></li>
+   * <li><code>thisIsATest</code>: <code>this_is_a_test</code></li>
+   * <li><code>this1Is12A123Test1234</code>: <code>this_1_is_12_a_123_test_1234</code></li>
+   * </ul>
+   * <p>Adapted from <a href="http://stackoverflow.com/a/2560017/396747">Stack Overflow answer</a></p>
+   *
+   * @param camelCase The camel case (with arbitrary initial capitalisation)
+   *
+   * @return A snake case version in lowercase
+   */
+  public static String toSnakeCase(String camelCase) {
+    return camelCase.replaceAll(
+      String.format("%s|%s|%s",
+        "(?<=[A-Z])(?=[A-Z][a-z])",
+        "(?<=[^A-Z])(?=[A-Z])",
+        "(?<=[A-Za-z])(?=[^A-Za-z])"
+      ),
+      "_"
+    ).toLowerCase();
+  }
+
+  /**
+   * <p>Converts camel case to document lowercase as follows:</p>
+   * <ul>
+   * <li><code>This</code>: <code>this</code></li>
+   * <li><code>ThisIs</code>: <code>this is</code></li>
+   * <li><code>thisIsATest</code>: <code>this is a test</code></li>
+   * <li><code>this1Is12A123Test1234</code>: <code>this 1 is 12 a 123 test 1234</code></li>
+   * </ul>
+   * <p>Adapted from <a href="http://stackoverflow.com/a/2560017/396747">Stack Overflow answer</a></p>
+   *
+   * @param camelCase The camel case (with arbitrary initial capitalisation)
+   *
+   * @return A document version in lowercase (useful for describing entities in Javadocs)
+   */
+  public static String toComment(String camelCase) {
+    return camelCase.replaceAll(
+      String.format("%s|%s|%s",
+        "(?<=[A-Z])(?=[A-Z][a-z])",
+        "(?<=[^A-Z])(?=[A-Z])",
+        "(?<=[A-Za-z])(?=[^A-Za-z])"
+      ),
+      " "
+    ).toLowerCase();
+  }
+
+  /**
+   * <p>Converts camel case to hyphenated lowercase as follows:</p>
+   * <ul>
+   * <li><code>This</code>: <code>this</code></li>
+   * <li><code>ThisIs</code>: <code>this-is</code></li>
+   * <li><code>thisIsATest</code>: <code>this-is-a-test</code></li>
+   * <li><code>this1Is12A123Test1234</code>: <code>this-1-is-12-a-123-test-1234</code></li>
+   * </ul>
+   * <p>Adapted from <a href="http://stackoverflow.com/a/2560017/396747">Stack Overflow answer</a></p>
+   *
+   * @param camelCase The camel case (with arbitrary initial capitalisation)
+   *
+   * @return A hyphen version in lowercase (useful for describing entities in RESTful endpoints)
+   */
+  public static String toHyphen(String camelCase) {
+    return camelCase.replaceAll(
+      String.format("%s|%s|%s",
+        "(?<=[A-Z])(?=[A-Z][a-z])",
+        "(?<=[^A-Z])(?=[A-Z])",
+        "(?<=[A-Za-z])(?=[^A-Za-z])"
+      ),
+      "-"
+    ).toLowerCase();
+  }
+
+  /**
+   * <p>Converts camel case to title case with spaces as follows:</p>
+   * <ul>
+   * <li><code>This</code>: <code>This</code></li>
+   * <li><code>ThisIs</code>: <code>This is</code></li>
+   * <li><code>thisIsATest</code>: <code>This Is A Test</code></li>
+   * <li><code>this1Is12A123Test1234</code>: <code>This 1 Is 12 A 123 Test 1234</code></li>
+   * </ul>
+   * <p>Adapted from <a href="http://stackoverflow.com/a/2560017/396747">Stack Overflow answer</a></p>
+   *
+   * @param camelCase The camel case (with arbitrary initial capitalisation)
+   *
+   * @return A document version in title case (useful for describing entities in titles)
+   */
+  public static String toTitle(String camelCase) {
+    String spaced = camelCase.replaceAll(
+      String.format("%s|%s|%s",
+        "(?<=[A-Z])(?=[A-Z][a-z])",
+        "(?<=[^A-Z])(?=[A-Z])",
+        "(?<=[A-Za-z])(?=[^A-Za-z])"
+      ),
+      " "
+    );
+
+    return spaced.substring(0, 1).toUpperCase() + spaced.substring(1);
+  }
+
+  /**
+   * Execute in write mode
+   *
+   * @throws IOException If something goes wrong
+   */
+  private void handleWrite() throws IOException {
+    System.out.println("Writing new code from templates");
+
+    // Build URIs for all templates within the project
+    Set<URI> projectUris = Sets.newHashSet();
+    if (sc.getTemplateLocation().startsWith("classpath:")) {
+      // Use classpath filtering
+      filterClasspath(projectUris);
+    } else {
+      recurseFiles(sc.getTemplateLocation() + sc.getProfilePath(), projectUris);
+    }
+    sc.setProjectUris(projectUris);
+
+    System.out.println("Extracted templates: " + projectUris.size());
+
+    writeTemplates(sc);
+  }
+
+  /**
+   * Execute in read mode
+   *
+   * @throws IOException If something goes wrong
+   */
+  private void handleRead() throws IOException {
+    System.out.println("Reading existing project and extracting templates");
+
+    // Build URIs for all files within the project
+    Set<URI> projectUris = Sets.newHashSet();
+    recurseFiles(BASE_SRC_PATH, projectUris);
+    sc.setProjectUris(projectUris);
+
+    // Add root level files
+    File[] files = new File(ROOT_PATH).listFiles();
+    if (files != null) {
+      for (File file : files) {
+        if (file.isDirectory()) {
+          continue;
+        }
+
+        String fileName = file.getName();
+
+        // Handle common exclusions
+        boolean ignore = false;
+        for (Pattern pattern : ignoreFilePatterns) {
+          if (pattern.matcher(fileName).matches()) {
+            // It's on the ignore list
+            ignore = true;
+          }
+        }
+
+        if (!ignore) {
+          projectUris.add(file.toURI());
+        } else {
+          System.err.println("Ignoring '" + fileName + "'");
+        }
+      }
+    }
+
+    readTemplates(sc);
   }
 
   /**
@@ -226,7 +377,7 @@ public class Scaffolding {
       for (String entity : entities) {
 
         // Work out the template target
-        String templateTarget = BASE_TEMPLATE_PATH + sc.getProfilePath() + projectPath + ".hbs";
+        String templateTarget = sc.getTemplateLocation() + sc.getProfilePath() + projectPath + ".hbs";
 
         // Introduce the base package directive
         String content = sourceCode.replace(basePackage, BASE_PACKAGE_DIRECTIVE);
@@ -288,6 +439,102 @@ public class Scaffolding {
   }
 
   /**
+   * <p>Recursive method</p>
+   *
+   * @param directory   The starting directory
+   * @param projectUris The set of URIs for all the templates
+   *
+   * @throws java.io.IOException If something goes wrong
+   */
+  private void recurseFiles(String directory, Set<URI> projectUris) throws IOException {
+
+    File[] files = new File(directory).listFiles();
+    if (files != null) {
+      for (File file : files) {
+        if (file.isDirectory()) {
+          recurseFiles(file.getAbsolutePath(), projectUris);
+          continue;
+        }
+        if (file.getName().matches("^(.*?)")) {
+          projectUris.add(file.toURI());
+        }
+      }
+    }
+
+  }
+
+  /**
+   * @param projectUris The set of URIs for all the templates
+   *
+   * @throws java.io.IOException If something goes wrong
+   */
+  private void filterClasspath(Set<URI> projectUris) throws IOException {
+
+    ClassPath classPath = ClassPath.from(Scaffolding.class.getClassLoader());
+
+    ImmutableSet<ClassPath.ResourceInfo> resources = classPath.getResources();
+
+    String profilePath = sc.getProfilePath();
+
+    for (ClassPath.ResourceInfo resourceInfo : resources) {
+
+      // Fully qualified resource name
+      String resourceName = resourceInfo.getResourceName();
+
+      if (resourceName.endsWith(".hbs") && resourceName.contains(profilePath)) {
+        projectUris.add(URI.create(resourceInfo.url().toString()));
+      }
+    }
+
+  }
+
+  /**
+   * @return A Map keyed on the target name (relative to working directory) and containing the template with directives
+   *
+   * @throws java.io.IOException If something goes wrong
+   */
+  private Map<String, String> buildTemplateMap(ScaffoldingConfiguration sc) throws IOException {
+
+    // Provide a map for target and template
+    Map<String, String> templateMap = Maps.newHashMap();
+
+    // Work out the URI path prefix which can be stripped to
+    // make the project path relative
+    String pathPrefix;
+    if (sc.getTemplateLocation().startsWith("classpath:")) {
+      // Templates are from classpath
+      String rawUri = sc.getProjectUris().iterator().next().toString();
+      pathPrefix = rawUri.substring(0, rawUri.indexOf(".jar!")+5);
+    } else {
+      // Templates are from file system
+      // Current working directory
+      String workDir = (new File("")).toURI().getPath();
+      pathPrefix = workDir + sc.getTemplateLocation() + sc.getProfilePath();
+    }
+
+    // Work through all project URIs
+    for (URI uri : sc.getProjectUris()) {
+
+      // Determine the project path
+      String rawUri = uri.toString();
+
+      // Filter out any non-scaffolding resources (the project URI gathering process should have done this)
+      if (rawUri.endsWith(".hbs")) {
+
+        // Target is the relative path to the current working directory
+        String target = URLDecoder.decode(rawUri, Charsets.UTF_8.name()).replace(pathPrefix, "");
+        String template = Resources.toString(uri.toURL(), Charsets.UTF_8);
+
+        templateMap.put(target, template);
+
+      }
+
+    }
+
+    return templateMap;
+  }
+
+  /**
    * Handles the process of writing out the templates
    *
    * @param sc The configuration
@@ -338,10 +585,21 @@ public class Scaffolding {
           continue;
         }
 
+        // Cache the profile path
+        String profilePath = sc.getProfilePath();
+
+        System.out.println("profilePath:" + profilePath);
+
         // Transform target and content using directives
         for (Map.Entry<String, String> directiveEntry : directiveMap.entrySet()) {
 
           target = target.replace(directiveEntry.getKey(), directiveEntry.getValue());
+
+          if (target.contains(profilePath)) {
+            // Strip off unwanted paths (possibly running in an IDE)
+            target = target.substring(target.indexOf(profilePath) + profilePath.length());
+          }
+
           content = content.replace(directiveEntry.getKey(), directiveEntry.getValue());
 
         }
@@ -352,168 +610,6 @@ public class Scaffolding {
 
     }
 
-  }
-
-  /**
-   * @return A Map keyed on the target name and containing the template with directives
-   *
-   * @throws java.io.IOException If something goes wrong
-   */
-  private Map<String, String> buildTemplateMap(ScaffoldingConfiguration sc) throws IOException {
-
-    // Provide a map for target and template
-    Map<String, String> templateMap = Maps.newHashMap();
-
-    // Form a set of all classes in the classpath starting at the base package
-    String workDir = (new File("")).toURI().getPath();
-
-    for (URI uri : sc.getProjectUris()) {
-
-      String projectPath = uri.getPath().replace(workDir, "");
-
-      // Filter out any non-scaffolding resources
-      if (projectPath.contains(SCAFFOLDING) && projectPath.endsWith(".hbs")) {
-
-        String target = projectPath.replace(BASE_TEMPLATE_PATH + sc.getProfilePath(), "");
-        String template = Resources.toString(uri.toURL(), Charsets.UTF_8);
-
-        templateMap.put(target, template);
-
-      }
-
-    }
-
-    return templateMap;
-  }
-
-  /**
-   * <p>Converts camel case to snake case as follows:</p>
-   * <ul>
-   * <li><code>This</code>: <code>this</code></li>
-   * <li><code>ThisIs</code>: <code>this_is</code></li>
-   * <li><code>thisIsATest</code>: <code>this_is_a_test</code></li>
-   * <li><code>this1Is12A123Test1234</code>: <code>this_1_is_12_a_123_test_1234</code></li>
-   * </ul>
-   * <p>Adapted from <a href="http://stackoverflow.com/a/2560017/396747">Stack Overflow answer</a></p>
-   *
-   * @param camelCase The camel case (with arbitrary initial capitalisation)
-   *
-   * @return A snake case version in lowercase
-   */
-  private String toSnakeCase(String camelCase) {
-    return camelCase.replaceAll(
-      String.format("%s|%s|%s",
-        "(?<=[A-Z])(?=[A-Z][a-z])",
-        "(?<=[^A-Z])(?=[A-Z])",
-        "(?<=[A-Za-z])(?=[^A-Za-z])"
-      ),
-      "_"
-    ).toLowerCase();
-  }
-
-  /**
-   * <p>Converts camel case to document lowercase as follows:</p>
-   * <ul>
-   * <li><code>This</code>: <code>this</code></li>
-   * <li><code>ThisIs</code>: <code>this is</code></li>
-   * <li><code>thisIsATest</code>: <code>this is a test</code></li>
-   * <li><code>this1Is12A123Test1234</code>: <code>this 1 is 12 a 123 test 1234</code></li>
-   * </ul>
-   * <p>Adapted from <a href="http://stackoverflow.com/a/2560017/396747">Stack Overflow answer</a></p>
-   *
-   * @param camelCase The camel case (with arbitrary initial capitalisation)
-   *
-   * @return A document version in lowercase (useful for describing entities in Javadocs)
-   */
-  private String toComment(String camelCase) {
-    return camelCase.replaceAll(
-      String.format("%s|%s|%s",
-        "(?<=[A-Z])(?=[A-Z][a-z])",
-        "(?<=[^A-Z])(?=[A-Z])",
-        "(?<=[A-Za-z])(?=[^A-Za-z])"
-      ),
-      " "
-    ).toLowerCase();
-  }
-
-  /**
-   * <p>Converts camel case to hyphenated lowercase as follows:</p>
-   * <ul>
-   * <li><code>This</code>: <code>this</code></li>
-   * <li><code>ThisIs</code>: <code>this-is</code></li>
-   * <li><code>thisIsATest</code>: <code>this-is-a-test</code></li>
-   * <li><code>this1Is12A123Test1234</code>: <code>this-1-is-12-a-123-test-1234</code></li>
-   * </ul>
-   * <p>Adapted from <a href="http://stackoverflow.com/a/2560017/396747">Stack Overflow answer</a></p>
-   *
-   * @param camelCase The camel case (with arbitrary initial capitalisation)
-   *
-   * @return A hyphen version in lowercase (useful for describing entities in RESTful endpoints)
-   */
-  private String toHyphen(String camelCase) {
-    return camelCase.replaceAll(
-      String.format("%s|%s|%s",
-        "(?<=[A-Z])(?=[A-Z][a-z])",
-        "(?<=[^A-Z])(?=[A-Z])",
-        "(?<=[A-Za-z])(?=[^A-Za-z])"
-      ),
-      "-"
-    ).toLowerCase();
-  }
-
-  /**
-   * <p>Converts camel case to title case with spaces as follows:</p>
-   * <ul>
-   * <li><code>This</code>: <code>This</code></li>
-   * <li><code>ThisIs</code>: <code>This is</code></li>
-   * <li><code>thisIsATest</code>: <code>This Is A Test</code></li>
-   * <li><code>this1Is12A123Test1234</code>: <code>This 1 Is 12 A 123 Test 1234</code></li>
-   * </ul>
-   * <p>Adapted from <a href="http://stackoverflow.com/a/2560017/396747">Stack Overflow answer</a></p>
-   *
-   * @param camelCase The camel case (with arbitrary initial capitalisation)
-   *
-   * @return A document version in title case (useful for describing entities in titles)
-   */
-  private String toTitle(String camelCase) {
-    String spaced = camelCase.replaceAll(
-      String.format("%s|%s|%s",
-        "(?<=[A-Z])(?=[A-Z][a-z])",
-        "(?<=[^A-Z])(?=[A-Z])",
-        "(?<=[A-Za-z])(?=[^A-Za-z])"
-      ),
-      " "
-    );
-
-    return spaced.substring(0, 1).toUpperCase() + spaced.substring(1);
-  }
-
-  /**
-   * <p>Recursive method</p>
-   *
-   * @param directory   The starting directory
-   * @param projectUris The set of URIs for all the files
-   *
-   * @return The set of all URIs
-   *
-   * @throws java.io.IOException If something goes wrong
-   */
-  private Set<URI> recurseFiles(String directory, Set<URI> projectUris) throws IOException {
-
-    File[] files = new File(directory).listFiles();
-    if (files != null) {
-      for (File file : files) {
-        if (file.isDirectory()) {
-          recurseFiles(file.getAbsolutePath(), projectUris);
-          continue;
-        }
-        if (file.getName().matches("^(.*?)")) {
-          projectUris.add(file.toURI());
-        }
-      }
-    }
-
-    return projectUris;
   }
 
   /**
@@ -549,6 +645,9 @@ public class Scaffolding {
     @JsonProperty("output_directory")
     private String outputDirectory = ".";
 
+    @JsonProperty("input_path")
+    private String templateLocation = "src/test/resources";
+
     @JsonProperty("base_package")
     private String basePackage = "org.example";
 
@@ -581,12 +680,16 @@ public class Scaffolding {
       return profile;
     }
 
+    public void setProfile(String profile) {
+      this.profile = profile;
+    }
+
     /**
      * @return The name of the profile with path separator appended (if not empty)
      */
     public String getProfilePath() {
 
-      if (profile == null || profile.length()==0) {
+      if (profile == null || profile.length() == 0) {
         return "";
       }
 
@@ -597,11 +700,33 @@ public class Scaffolding {
       return profile;
     }
 
+
     /**
      * @return The output directory when writing (e.g. ".", "target/generated-sources")
      */
     public String getOutputDirectory() {
       return outputDirectory;
+    }
+
+    public void setOutputDirectory(String outputDirectory) {
+      this.outputDirectory = outputDirectory;
+    }
+
+    /**
+     * The input path allows a variety of operating modes. The default is to read a standard Maven test resources
+     * directory structure recursively. However, prefixing "classpath:" will cause Scaffolding to read from its
+     * classpath instead.
+     *
+     * Any selected profile will be appended to this path
+     *
+     * @return The template location when reading (e.g. "src/test/resources/scaffolding", "classpath:/templates/scaffolding")
+     */
+    public String getTemplateLocation() {
+      return templateLocation;
+    }
+
+    public void setTemplateLocation(String templateLocation) {
+      this.templateLocation = templateLocation;
     }
 
     /**
@@ -611,11 +736,19 @@ public class Scaffolding {
       return basePackage;
     }
 
+    public void setBasePackage(String basePackage) {
+      this.basePackage = basePackage;
+    }
+
     /**
      * @return True if Scaffolding should scan the project looking for templates
      */
     public boolean isRead() {
       return read;
+    }
+
+    public void setRead(boolean read) {
+      this.read = read;
     }
 
     /**
@@ -625,8 +758,17 @@ public class Scaffolding {
       return onlyWithEntityDirectives;
     }
 
+
+    public void setOnlyWithEntityDirectives(boolean onlyWithEntityDirectives) {
+      this.onlyWithEntityDirectives = onlyWithEntityDirectives;
+    }
+
     public Set<String> getEntities() {
       return entities;
+    }
+
+    public void setEntities(Set<String> entities) {
+      this.entities = entities;
     }
 
     /**

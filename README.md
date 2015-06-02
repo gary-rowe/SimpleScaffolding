@@ -47,6 +47,7 @@ To get `Scaffolding` to read your existing code you need to provide a `scaffoldi
 {
   "profile":"default",
   "output_directory":"target/generated-resources",
+  "template_location": "src/test/resources/scaffolding",
   "base_package":"uk.co.froot.example",
   "read": true,
   "only_with_entity_directives": true,
@@ -87,6 +88,7 @@ files. You switch away from `read` and provide a list of new entities that you w
 {
   "profile":"default",
   "output_directory":".",
+  "template_location": "src/test/resources/scaffolding",
   "base_package":"uk.co.froot.example",
   "read": false,
   "entities": ["Role","Customer"]
@@ -104,6 +106,9 @@ you'll find `role.Role` and `customer.Customer`.
 
 They even have unit tests. Since `AdminUserTest` was available, `Scaffolding` was able to generate the unit tests,
 their test fixtures and some friendly entity-specific documentation.
+
+Note that the `template_location` supports the `classpath:` prefix so that the Scaffolding class can be used within an
+application using its classpath as the source of the templates. This is handy if you need to create a "code generator" service.
 
 #### TIP: Use your IDE's version control view to strip out unwanted templates
 
@@ -129,6 +134,11 @@ Thank you for considering this. I maintain a [Bitcoin](http://bitcoin.org) donat
 (http://gary-rowe.com).
 
 ### Releases
+
+#### 1.6.0
+
+Added support for `template_location`
+Allow scaffolding templates to be read from either file system or classpath
 
 #### 1.5.0
 
