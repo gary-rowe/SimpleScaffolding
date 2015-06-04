@@ -645,7 +645,7 @@ public class Scaffolding {
     @JsonProperty("output_directory")
     private String outputDirectory = ".";
 
-    @JsonProperty("input_path")
+    @JsonProperty("template_location")
     private String templateLocation = "src/test/resources";
 
     @JsonProperty("base_package")
