@@ -298,7 +298,7 @@ public class Scaffolding {
       // Use classpath filtering
       filterClasspath(projectUris);
     } else {
-      recurseFiles(sc.getTemplateLocation() + sc.getProfilePath(), projectUris);
+      recurseFiles(sc.getTemplateLocation() + "/" + sc.getProfilePath(), projectUris);
     }
     sc.setProjectUris(projectUris);
 
@@ -377,7 +377,7 @@ public class Scaffolding {
       for (String entity : entities) {
 
         // Work out the template target
-        String templateTarget = sc.getTemplateLocation() + sc.getProfilePath() + projectPath + ".hbs";
+        String templateTarget = sc.getTemplateLocation() + "/" + sc.getProfilePath() + projectPath + ".hbs";
 
         // Introduce the base package directive
         String content = sourceCode.replace(basePackage, BASE_PACKAGE_DIRECTIVE);
@@ -509,7 +509,7 @@ public class Scaffolding {
       // Templates are from file system
       // Current working directory
       String workDir = (new File("")).toURI().getPath();
-      pathPrefix = workDir + sc.getTemplateLocation() + sc.getProfilePath();
+      pathPrefix = workDir + sc.getTemplateLocation() + "/" + sc.getProfilePath();
     }
 
     // Work through all project URIs
