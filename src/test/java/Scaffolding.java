@@ -675,7 +675,7 @@ public class Scaffolding {
     private Set<URI> projectUris = Sets.newHashSet();
 
     @JsonProperty
-    private Map<String, String> userTokenMap;
+    private Map<String, String> userTokenMap = Maps.newHashMap();
 
     public ScaffoldingConfiguration() {
     }
