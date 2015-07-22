@@ -51,7 +51,8 @@ To get `Scaffolding` to read your existing code you need to provide a `scaffoldi
   "base_package":"uk.co.froot.example",
   "read": true,
   "only_with_entity_directives": true,
-  "entities": ["AdminUser"]
+  "entities": ["AdminUser"],
+  "user_token_map": {"PORT": "8080"}
 }
 ```
 
@@ -91,7 +92,8 @@ files. You switch away from `read` and provide a list of new entities that you w
   "template_location": "src/test/resources/scaffolding",
   "base_package":"uk.co.froot.example",
   "read": false,
-  "entities": ["Role","Customer"]
+  "entities": ["Role","Customer"],
+  "user_token_map": {"PORT": "8080"}
 }
 ```
 
@@ -134,6 +136,11 @@ Thank you for considering this. I maintain a [Bitcoin](http://bitcoin.org) donat
 (http://gary-rowe.com).
 
 ### Releases
+
+#### 1.7.0
+
+Added support for `user_token_map`
+Allow scaffolding templates to include user defined tokens, e.g. {{PORT}}
 
 #### 1.6.0
 

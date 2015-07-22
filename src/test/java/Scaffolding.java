@@ -1,5 +1,3 @@
-package uk.gov.meto.codegen.service;
-
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -44,6 +42,9 @@ import java.util.regex.Pattern;
  * <li><code>entity-comment</code>: Entity variable as a comment, e.g. <code>admin user</code></li>
  * <li><code>entity-hyphen</code>: Entity variable in hyphenated form, e.g. <code>admin-user</code></li>
  * </ul>
+ * <p>As of version 1.6.0+ you can add your own token map containing key-value pairs. This allows external applications to configure
+ * Scaffolding to perform token replacement for almost complete customisation of the output. These will be overwritten by the standard
+ * placeholders above (case-sensitive) so the recommendation is to use all capitals and underscores.</p>
  * <h3>How to install</h3>
  * <p>Just copy this source code into your project under <code>src/test/java</code>. You might want to copy in <code>scaffolding.json</code>
  * as well.</p>
@@ -59,7 +60,8 @@ import java.util.regex.Pattern;
  *   "base_package": "org.example.service",
  *   "read": true,
  *   "only_with_entity_directives": false,
- *   "entities": ["MyEntity"]
+ *   "entities": ["MyEntity"],
+ *   "user_token_map": {"PORT": "8080"}
  * }
  *
  * </pre>
@@ -78,7 +80,8 @@ import java.util.regex.Pattern;
  *   "base_package": "org.example.service",
  *   "read": false,
  *   "only_with_entity_directives": false,
- *   "entities": ["Role", "DataSource"]
+ *   "entities": ["Role", "DataSource"],
+ *   "user_token_map": {"PORT": "8080"}
  * }
  * </pre>
  * <p>Using the above, the generic templates built from the <code>MyEntity</code> will be used to produce the
@@ -89,7 +92,7 @@ import java.util.regex.Pattern;
  * location.</p>
  *
  * @author Gary Rowe (http://gary-rowe.com)
- * @since 1.6.0
+ * @since 1.7.0
  */
 public class Scaffolding {
 
@@ -298,7 +301,7 @@ public class Scaffolding {
       // Use classpath filtering
       filterClasspath(projectUris);
     } else {
-      recurseFiles(sc.getTemplateLocation() + "/" + sc.getProfilePath(), projectUris);
+      recurseFiles(sc.getTemplateLocation() + sc.getProfilePath(), projectUris);
     }
     sc.setProjectUris(projectUris);
 
@@ -377,7 +380,7 @@ public class Scaffolding {
       for (String entity : entities) {
 
         // Work out the template target
-        String templateTarget = sc.getTemplateLocation() + "/" + sc.getProfilePath() + projectPath + ".hbs";
+        String templateTarget = sc.getTemplateLocation() + sc.getProfilePath() + projectPath + ".hbs";
 
         // Introduce the base package directive
         String content = sourceCode.replace(basePackage, BASE_PACKAGE_DIRECTIVE);
@@ -509,7 +512,7 @@ public class Scaffolding {
       // Templates are from file system
       // Current working directory
       String workDir = (new File("")).toURI().getPath();
-      pathPrefix = workDir + sc.getTemplateLocation() + "/" + sc.getProfilePath();
+      pathPrefix = workDir + sc.getTemplateLocation() + sc.getProfilePath();
     }
 
     // Work through all project URIs
@@ -559,7 +562,15 @@ public class Scaffolding {
       String entityHyphen = toHyphen(entityVariable);
       String entityComment = toComment(entityVariable);
 
+      // Create directive map for replacements
       Map<String, String> directiveMap = Maps.newHashMap();
+
+      // Add user tokens as directives (will be overwritten by standard ones)
+      for (Map.Entry<String, String> entry : sc.getUserTokenMap().entrySet()) {
+        directiveMap.put("{{"+entry.getKey()+"}}", entry.getValue());
+      }
+
+      // Add standard directives
       directiveMap.put(BASE_PACKAGE_DIRECTIVE, basePackage);
       directiveMap.put(BASE_PACKAGE_PATH_DIRECTIVE, sc.getBasePath());
       directiveMap.put(ENTITY_CLASS_DIRECTIVE, entity);
@@ -645,7 +656,7 @@ public class Scaffolding {
     @JsonProperty("output_directory")
     private String outputDirectory = ".";
 
-    @JsonProperty("template_location")
+    @JsonProperty("input_path")
     private String templateLocation = "src/test/resources";
 
     @JsonProperty("base_package")
@@ -662,6 +673,9 @@ public class Scaffolding {
 
     @JsonIgnore
     private Set<URI> projectUris = Sets.newHashSet();
+
+    @JsonProperty
+    private Map<String, String> userTokenMap;
 
     public ScaffoldingConfiguration() {
     }
@@ -788,6 +802,18 @@ public class Scaffolding {
      */
     public Set<URI> getProjectUris() {
       return projectUris;
+    }
+
+
+    public void setUserTokenMap(Map<String, String> userTokenMap) {
+      this.userTokenMap = userTokenMap;
+    }
+
+    /**
+     * @return The user's token map with key-value pairs for additional replacement
+     */
+    public Map<String, String> getUserTokenMap() {
+      return userTokenMap;
     }
   }
 
