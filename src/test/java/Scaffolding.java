@@ -386,11 +386,11 @@ public class Scaffolding {
         String content = sourceCode.replace(basePackage, BASE_PACKAGE_DIRECTIVE);
 
         // Build the patterns to recognise the entities
-        String entityVariable = entity.substring(0, 1).toLowerCase() + entity.substring(1);
-        String entityTitle = toTitle(entityVariable);
-        String entitySnake = toSnakeCase(entityVariable);
-        String entityComment = toComment(entityVariable);
-        String entityHyphen = toHyphen(entityVariable);
+        String entityVariable = entity.substring(0, 1).toLowerCase() + entity.substring(1); // Java case
+        String entityTitle = toTitle(entity);
+        String entitySnake = toSnakeCase(entity);
+        String entityComment = toComment(entity);
+        String entityHyphen = toHyphen(entity);
 
         // Check for entity content
         content = content
@@ -557,10 +557,10 @@ public class Scaffolding {
     for (String entity : entities) {
 
       String entityVariable = entity.substring(0, 1).toLowerCase() + entity.substring(1);
-      String entityTitle = toTitle(entityVariable);
-      String entitySnake = toSnakeCase(entityVariable);
-      String entityHyphen = toHyphen(entityVariable);
-      String entityComment = toComment(entityVariable);
+      String entityTitle = toTitle(entity);
+      String entitySnake = toSnakeCase(entity);
+      String entityHyphen = toHyphen(entity);
+      String entityComment = toComment(entity);
 
       // Create directive map for replacements
       Map<String, String> directiveMap = Maps.newHashMap();
