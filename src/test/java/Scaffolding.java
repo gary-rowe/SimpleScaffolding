@@ -12,10 +12,10 @@ import com.google.common.reflect.ClassPath;
 
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileWriter;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.Writer;
+import java.io.OutputStreamWriter;
 import java.net.URI;
 import java.net.URLDecoder;
 import java.nio.charset.Charset;
@@ -640,7 +640,10 @@ public class Scaffolding {
     Files.createParentDirs(file);
 
     // Have a good target
-    Writer writer = new FileWriter(file);
+    OutputStreamWriter writer = new OutputStreamWriter(
+      new FileOutputStream(file),
+      Charsets.UTF_8
+    );
     writer.write(content);
     writer.close();
   }
