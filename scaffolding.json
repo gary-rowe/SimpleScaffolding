@@ -3,7 +3,8 @@
   "output_directory": ".",
   "template_location": "src/test/resources/scaffolding",
   "base_package": "uk.co.froot.example",
-  "read": true,
+  "read": false,
   "only_with_entity_directives": false,
-  "entities": ["AdminUser"]
+  "entities": ["CustomerUser"],
+  "user_token_map": {"PORT":"1000"}
 }

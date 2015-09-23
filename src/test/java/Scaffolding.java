@@ -61,7 +61,7 @@ import java.util.regex.Pattern;
  *   "read": true,
  *   "only_with_entity_directives": false,
  *   "entities": ["MyEntity"],
- *   "user_token_map": {"PORT": "8080"}
+ *   "user_token_map": {"PORT": "1000"}
  * }
  *
  * </pre>
@@ -81,7 +81,7 @@ import java.util.regex.Pattern;
  *   "read": false,
  *   "only_with_entity_directives": false,
  *   "entities": ["Role", "DataSource"],
- *   "user_token_map": {"PORT": "8080"}
+ *   "user_token_map": {"PORT": "1000"}
  * }
  * </pre>
  * <p>Using the above, the generic templates built from the <code>MyEntity</code> will be used to produce the
@@ -89,10 +89,11 @@ import java.util.regex.Pattern;
  * <code>User</code> then the produced code will act as good launch point for the new entities.</p>
  *
  * <p>Note that <code>template_location</code> has been adjusted to show support for reading templates off a classpath
- * location.</p>
+ * location. Also the <code>PORT</code> entry replaces the first 4 digits in the actual port which allows a group of ports
+ * to be specified such as HTTP on 10000 and Admin HTTP on 10001 and so on.</p>
  *
  * @author Gary Rowe (http://gary-rowe.com)
- * @since 1.7.0
+ * @since 1.8.0
  */
 public class Scaffolding {
 
@@ -301,7 +302,7 @@ public class Scaffolding {
       // Use classpath filtering
       filterClasspath(projectUris);
     } else {
-      recurseFiles(sc.getTemplateLocation() + sc.getProfilePath(), projectUris);
+      recurseFiles(sc.getTemplateLocation() + "/"+ sc.getProfilePath(), projectUris);
     }
     sc.setProjectUris(projectUris);
 
@@ -380,7 +381,7 @@ public class Scaffolding {
       for (String entity : entities) {
 
         // Work out the template target
-        String templateTarget = sc.getTemplateLocation() + sc.getProfilePath() + projectPath + ".hbs";
+        String templateTarget = sc.getTemplateLocation() + "/" + sc.getProfilePath() + projectPath + ".hbs";
 
         // Introduce the base package directive
         String content = sourceCode.replace(basePackage, BASE_PACKAGE_DIRECTIVE);
@@ -408,6 +409,12 @@ public class Scaffolding {
             // Detect admin-user
           .replace(entityHyphen, ENTITY_HYPHEN_DIRECTIVE)
         ;
+
+        // Check for user template entries
+        for (Map.Entry<String, String> entry : sc.getUserTokenMap().entrySet()) {
+          // Find the value and replace with the key as a directive (e.g. "{{PORT}}")
+          content = content.replace(entry.getValue(), "{{"+entry.getKey()+"}}");
+        }
 
         templateTarget = templateTarget
           .replace(entity, ENTITY_CLASS_DIRECTIVE)
@@ -512,7 +519,7 @@ public class Scaffolding {
       // Templates are from file system
       // Current working directory
       String workDir = (new File("")).toURI().getPath();
-      pathPrefix = workDir + sc.getTemplateLocation() + sc.getProfilePath();
+      pathPrefix = workDir + sc.getTemplateLocation() + "/" + sc.getProfilePath();
     }
 
     // Work through all project URIs
@@ -526,6 +533,9 @@ public class Scaffolding {
 
         // Target is the relative path to the current working directory
         String target = URLDecoder.decode(rawUri, Charsets.UTF_8.name()).replace(pathPrefix, "");
+        if (target.startsWith("file:")) {
+          target=target.substring(5);
+        }
         String template = Resources.toString(uri.toURL(), Charsets.UTF_8);
 
         templateMap.put(target, template);
@@ -587,6 +597,7 @@ public class Scaffolding {
 
         // Transform the target
         String target = templateEntry.getKey();
+        // Strip off the .hbs
         target = target.substring(0, target.length() - 4);
 
         // Check if path or content must contain directives
@@ -659,7 +670,7 @@ public class Scaffolding {
     @JsonProperty("output_directory")
     private String outputDirectory = ".";
 
-    @JsonProperty("input_path")
+    @JsonProperty("template_location")
     private String templateLocation = "src/test/resources";
 
     @JsonProperty("base_package")
@@ -677,7 +688,7 @@ public class Scaffolding {
     @JsonIgnore
     private Set<URI> projectUris = Sets.newHashSet();
 
-    @JsonProperty
+    @JsonProperty("user_token_map")
     private Map<String, String> userTokenMap = Maps.newHashMap();
 
     public ScaffoldingConfiguration() {
