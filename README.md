@@ -52,7 +52,7 @@ To get `Scaffolding` to read your existing code you need to provide a `scaffoldi
   "read": true,
   "only_with_entity_directives": true,
   "entities": ["AdminUser"],
-  "user_token_map": {"PORT": "8080"}
+  "user_token_map": {"PORT": "1000"}
 }
 ```
 
@@ -68,6 +68,14 @@ templates.
 You then delete any that are not useful and edit those that remain to meet your requirements. The idea is to edit them
 to be as general purpose as possible (no entity-specific fields beyond the common ID for example).
 
+The `user_token_map` entry will cause all instances of `1000` to be replaced with `{{PORT}}`. This allows, for example,
+the expression of multiple ports serving different protocols but grouped together:
+
+```
+http://localhost:{{PORT}}0/example-public-endpoint
+http://localhost:{{PORT}}1/example-admin-endpoint
+```
+
 #### TIP: Use entities with "multi-word" names to get snake case
 
 The template reader can infer snake case locations so providing a "multi-word" entity name, like `AdminUser`
@@ -76,9 +84,9 @@ for JSON test fixtures and package names.
 
 ### Try it now...
 
-This project contains an example of a DTO (`AdminUser`). Run `Scaffolding.main()` with `scaffolding.js` set as
+This project contains an example of a DTO (`AdminUser`). Run `Scaffolding.main()` with `scaffolding.json` set as
 above. In the blink of an eye you'll have a few templates under `src/test/resources/scaffolding/default`. Take a look at what
- has been extracted - in particular examine the comments.
+ has been extracted - in particular examine the comments where the `user_token_map` has been at work.
 
 ### Generate code from templates
 
@@ -93,7 +101,7 @@ files. You switch away from `read` and provide a list of new entities that you w
   "base_package":"uk.co.froot.example",
   "read": false,
   "entities": ["Role","Customer"],
-  "user_token_map": {"PORT": "8080"}
+  "user_token_map": {"PORT": "1000"}
 }
 ```
 
@@ -136,6 +144,11 @@ Thank you for considering this. I maintain a [Bitcoin](http://bitcoin.org) donat
 (http://gary-rowe.com).
 
 ### Releases
+
+#### 1.8.0
+
+Added support for `user_token_map` when reading templates
+Bug fixes when reading JSON
 
 #### 1.7.0
 
