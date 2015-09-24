@@ -66,7 +66,7 @@ import java.util.regex.Pattern;
  * }
  *
  * </pre>
- * <p>All code from <code>base_package</code> and below will be recursively examined and templates built. These will be
+ * <p>All code from <code>input_directory</code> <code>base_package</code> and below will be recursively examined and templates built. These will be
  * stored in a directory structure under <code>src/test/resources/scaffolding</code> (from <code>template_location</code>).
  * You can then delete any that are not useful and edit those that remain to meet your requirements. Usually there will
  * be little to no editing required.</p>
