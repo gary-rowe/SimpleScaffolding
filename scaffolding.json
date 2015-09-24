@@ -1,5 +1,6 @@
 {
   "profile": "default",
+  "input_directory": ".",
   "output_directory": ".",
   "template_location": "src/test/resources/scaffolding",
   "base_package": "uk.co.froot.example",

@@ -55,6 +55,7 @@ import java.util.regex.Pattern;
  * <pre>
  * {
  *   "profile": "example-microservice",
+ *   "input_directory": "source/example-project",
  *   "output_directory": "target/generated-service",
  *   "template_location": "src/test/resources/scaffolding",
  *   "base_package": "org.example.service",
@@ -75,6 +76,7 @@ import java.util.regex.Pattern;
  * <pre>
  * {
  *   "profile": "example-microservice",
+ *   "input_directory": "source/example-project",
  *   "output_directory": "target/generated-service",
  *   "template_location": "classpath:/scaffolding",
  *   "base_package": "org.example.service",
@@ -93,13 +95,9 @@ import java.util.regex.Pattern;
  * to be specified such as HTTP on 10000 and Admin HTTP on 10001 and so on.</p>
  *
  * @author Gary Rowe (http://gary-rowe.com)
- * @since 1.8.0
+ * @since 1.9.0
  */
 public class Scaffolding {
-
-  // Base path locations
-  private static final String BASE_SRC_PATH = "src";
-  private static final String ROOT_PATH = ".";
 
   // File filters
   private static final String[] IGNORE_FILE_REGEXES = new String[]{
@@ -176,11 +174,8 @@ public class Scaffolding {
     Preconditions.checkNotNull(sc);
 
     if (sc.isRead()) {
-
       handleRead();
-
     } else {
-
       handleWrite();
     }
 
@@ -321,11 +316,11 @@ public class Scaffolding {
 
     // Build URIs for all files within the project
     Set<URI> projectUris = Sets.newHashSet();
-    recurseFiles(BASE_SRC_PATH, projectUris);
+    recurseFiles(sc.getInputDirectory(), projectUris);
     sc.setProjectUris(projectUris);
 
     // Add root level files
-    File[] files = new File(ROOT_PATH).listFiles();
+    File[] files = new File(sc.getInputDirectory()).listFiles();
     if (files != null) {
       for (File file : files) {
         if (file.isDirectory()) {
@@ -367,7 +362,7 @@ public class Scaffolding {
     String basePackage = sc.getBasePackage();
 
     // Form a set of all classes in the classpath starting at the base package
-    String workDir = (new File("")).toURI().toString();
+    String workDir = (new File(sc.getInputDirectory())).toURI().toString();
 
     for (URI uri : sc.getProjectUris()) {
 
@@ -667,6 +662,9 @@ public class Scaffolding {
     @JsonProperty("profile")
     private String profile = "";
 
+    @JsonProperty("input_directory")
+    private String inputDirectory = ".";
+
     @JsonProperty("output_directory")
     private String outputDirectory = ".";
 
@@ -728,6 +726,16 @@ public class Scaffolding {
       return profile;
     }
 
+    /**
+     * @return The input directory when reading (e.g. ".", "/temp/source/example-project")
+     */
+    public String getInputDirectory() {
+      return inputDirectory;
+    }
+
+    public void setInputDirectory(String inputDirectory) {
+      this.inputDirectory = inputDirectory;
+    }
 
     /**
      * @return The output directory when writing (e.g. ".", "target/generated-sources")
