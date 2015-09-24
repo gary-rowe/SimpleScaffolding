@@ -366,7 +366,8 @@ public class Scaffolding {
 
     for (URI uri : sc.getProjectUris()) {
 
-      String projectPath = uri.toString().replace(workDir, "");
+      // Avoid URL encoding when writing templates
+      String projectPath = URLDecoder.decode(uri.toString(), "UTF-8").replace(workDir, "");
 
       // Read the source file
       String sourceCode = Resources.toString(uri.toURL(), Charset.defaultCharset());
